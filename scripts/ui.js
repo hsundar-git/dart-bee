@@ -86,6 +86,86 @@ const UI = (() => {
     }
 
     /**
+     * Helper: Setup player autocomplete for an input field
+     * @param {HTMLInputElement} input - The input element
+     * @param {Array<string>} existingPlayers - List of existing player names
+     * @param {HTMLElement} container - Container to check for duplicates
+     * @param {Function} onSelect - Optional callback when player is selected
+     */
+    function setupPlayerAutocomplete(input, existingPlayers, container, onSelect = null) {
+        const wrapper = input.parentElement;
+        if (!wrapper) return;
+
+        // Create suggestions list if it doesn't exist
+        let suggestionsList = wrapper.querySelector('.player-suggestions');
+        if (!suggestionsList) {
+            suggestionsList = document.createElement('div');
+            suggestionsList.className = 'player-suggestions';
+            suggestionsList.style.display = 'none';
+            wrapper.appendChild(suggestionsList);
+        }
+
+        // Handle input for suggestions
+        input.addEventListener('input', (e) => {
+            const value = e.target.value.toLowerCase().trim();
+
+            if (value.length === 0) {
+                suggestionsList.style.display = 'none';
+                return;
+            }
+
+            // Get all currently selected player names (excluding this input)
+            const selectedNames = Array.from(container.querySelectorAll('.player-name-input'))
+                .filter(inp => inp !== input)
+                .map(inp => inp.value.toLowerCase().trim())
+                .filter(name => name !== '');
+
+            // Filter existing players matching the input, excluding already selected ones
+            const matches = existingPlayers.filter(player =>
+                player.toLowerCase().includes(value) &&
+                !selectedNames.includes(player.toLowerCase())
+            );
+
+            if (matches.length === 0) {
+                suggestionsList.style.display = 'none';
+                return;
+            }
+
+            // Show suggestions
+            suggestionsList.innerHTML = matches.map(player => `
+                <div class="suggestion-item" data-player="${player}">
+                    ${player}
+                </div>
+            `).join('');
+            suggestionsList.style.display = 'block';
+
+            // Handle suggestion clicks
+            suggestionsList.querySelectorAll('.suggestion-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    input.value = item.getAttribute('data-player');
+                    suggestionsList.style.display = 'none';
+                    if (onSelect) onSelect();
+                });
+            });
+        });
+
+        // Hide suggestions when clicking outside
+        input.addEventListener('blur', () => {
+            setTimeout(() => {
+                suggestionsList.style.display = 'none';
+            }, 200);
+        });
+
+        // Show suggestions on focus if there's value
+        input.addEventListener('focus', () => {
+            if (input.value.length > 0) {
+                const event = new Event('input', { bubbles: true });
+                input.dispatchEvent(event);
+            }
+        });
+    }
+
+    /**
      * Render recent games on home page
      */
     async function renderStatsWidget() {
@@ -2284,57 +2364,130 @@ const UI = (() => {
     /**
      * Render new tournament form
      */
-    function renderNewTournamentForm() {
+    async function renderNewTournamentForm() {
         // Initialize player count handling
         const playerCountInput = document.getElementById('tournament-player-count');
         const playerNamesContainer = document.getElementById('tournament-player-names');
+        const playersGroup = document.getElementById('tournament-players-group');
 
         if (!playerCountInput || !playerNamesContainer) return;
 
-        function updatePlayerInputs() {
+        // Get existing players for autocomplete
+        let existingPlayers = [];
+        try {
+            const players = await Storage.getPlayers();
+            existingPlayers = Object.keys(players) || [];
+        } catch (error) {
+            console.warn('Could not load players for autocomplete:', error);
+        }
+
+        async function updatePlayerInputs() {
             const count = parseInt(playerCountInput.value);
+
+            // Show/hide player names group
+            if (playersGroup) {
+                playersGroup.style.display = count > 0 ? 'block' : 'none';
+            }
+
+            // Save existing values
             const existingValues = [];
             playerNamesContainer.querySelectorAll('.player-name-input').forEach(input => {
                 existingValues.push(input.value);
             });
 
+            // Regenerate inputs
             playerNamesContainer.innerHTML = '';
             for (let i = 0; i < count; i++) {
+                const wrapper = document.createElement('div');
+                wrapper.style.position = 'relative';
+
                 const input = document.createElement('input');
                 input.type = 'text';
                 input.placeholder = `Player ${i + 1}`;
                 input.className = 'player-name-input form-input';
+                input.setAttribute('autocomplete', 'off');
+
                 if (i < existingValues.length) {
                     input.value = existingValues[i];
                 }
-                playerNamesContainer.appendChild(input);
+
+                wrapper.appendChild(input);
+                playerNamesContainer.appendChild(wrapper);
+
+                // Setup autocomplete
+                setupPlayerAutocomplete(input, existingPlayers, playerNamesContainer);
             }
         }
 
         playerCountInput.addEventListener('change', updatePlayerInputs);
-        updatePlayerInputs();
+        await updatePlayerInputs();
     }
 
     /**
      * Render new league form
      */
-    function renderNewLeagueForm() {
+    async function renderNewLeagueForm() {
         // Initialize player inputs
         const addPlayerBtn = document.getElementById('add-league-player-btn');
         const playerNamesContainer = document.getElementById('league-player-names');
 
         if (!addPlayerBtn || !playerNamesContainer) return;
 
+        // Get existing players for autocomplete
+        let existingPlayers = [];
+        try {
+            const players = await Storage.getPlayers();
+            existingPlayers = Object.keys(players) || [];
+        } catch (error) {
+            console.warn('Could not load players for autocomplete:', error);
+        }
+
+        // Setup autocomplete for existing inputs
+        const setupExistingInputs = () => {
+            playerNamesContainer.querySelectorAll('.player-name-input').forEach(input => {
+                // Wrap in relative div if not already wrapped
+                if (!input.parentElement.classList.contains('league-player-input-row')) {
+                    const wrapper = document.createElement('div');
+                    wrapper.style.position = 'relative';
+                    input.parentElement.insertBefore(wrapper, input);
+                    wrapper.appendChild(input);
+                }
+                input.setAttribute('autocomplete', 'off');
+                setupPlayerAutocomplete(input, existingPlayers, playerNamesContainer);
+            });
+        };
+
+        // Setup autocomplete for initial inputs
+        setupExistingInputs();
+
         addPlayerBtn.addEventListener('click', () => {
             const count = playerNamesContainer.querySelectorAll('.player-name-input').length;
-            const input = document.createElement('div');
-            input.className = 'league-player-input-row';
-            input.innerHTML = `
-                <input type="text" placeholder="Player ${count + 1}" class="player-name-input form-input">
-                <button type="button" class="btn btn-small btn-danger remove-player-btn">Remove</button>
-            `;
-            input.querySelector('.remove-player-btn').addEventListener('click', () => input.remove());
-            playerNamesContainer.appendChild(input);
+            const row = document.createElement('div');
+            row.className = 'league-player-input-row';
+
+            const inputWrapper = document.createElement('div');
+            inputWrapper.style.position = 'relative';
+            inputWrapper.style.flex = '1';
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.placeholder = `Player ${count + 1}`;
+            input.className = 'player-name-input form-input';
+            input.setAttribute('autocomplete', 'off');
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn btn-small btn-danger remove-player-btn';
+            removeBtn.textContent = 'Remove';
+            removeBtn.addEventListener('click', () => row.remove());
+
+            inputWrapper.appendChild(input);
+            row.appendChild(inputWrapper);
+            row.appendChild(removeBtn);
+            playerNamesContainer.appendChild(row);
+
+            // Setup autocomplete for new input
+            setupPlayerAutocomplete(input, existingPlayers, playerNamesContainer);
         });
     }
 

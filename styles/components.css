@@ -2173,6 +2173,22 @@
     flex-wrap: wrap;
 }
 
+/* League Player Input Row */
+.league-player-input-row {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+    margin-bottom: var(--spacing-sm);
+}
+
+.league-player-input-row .player-name-input {
+    flex: 1;
+}
+
+.league-player-input-row .remove-player-btn {
+    flex-shrink: 0;
+}
+
 /* Competition Cards */
 .competitions-list {
     display: grid;

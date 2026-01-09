@@ -967,6 +967,7 @@ const App = (() => {
         try {
             UI.showPage('competitions-page');
             await UI.renderCompetitionsHub('tournaments');
+            setupCompetitionEvents(); // Ensure event listeners are attached
         } catch (error) {
             console.error('Error loading competitions:', error);
             UI.showToast('Failed to load competitions', 'error');
