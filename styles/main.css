@@ -540,32 +540,7 @@ input[type="checkbox"] {
     margin-top: 0;
 }
 
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    gap: var(--spacing-lg);
-}
-
-.stat-card {
-    background: var(--color-bg-light);
-    padding: var(--spacing-lg);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--color-border);
-    text-align: center;
-}
-
-.stat-label {
-    font-size: var(--font-size-sm);
-    color: var(--color-text-light);
-    font-weight: var(--font-weight-medium);
-    margin-bottom: var(--spacing-sm);
-}
-
-.stat-value {
-    font-size: var(--font-size-2xl);
-    font-weight: var(--font-weight-bold);
-    color: var(--color-primary);
-}
+/* Stats styling moved to components.css for bee theme consistency */
 
 .games-list,
 .leaderboard-list {
@@ -646,9 +621,7 @@ input[type="checkbox"] {
         max-height: 450px;
     }
 
-    .stats-grid {
-        grid-template-columns: repeat(4, 1fr);
-    }
+    /* stats-grid responsive styling in components.css */
 
     .player-names-grid {
         grid-template-columns: 1fr;
@@ -696,9 +669,7 @@ input[type="checkbox"] {
         font-size: var(--font-size-lg);
     }
 
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
+    /* stats-grid responsive styling in components.css */
 
     .recent-games-column {
         max-height: 400px;
