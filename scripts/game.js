@@ -240,6 +240,9 @@ const Game = (() => {
             // Calculate rank for this player based on finish round
             const finishRank = calculateCurrentRank(game, currentPlayer.finish_round);
 
+            // IMPORTANT: Assign the rank to the player object so it's persisted to DB
+            currentPlayer.finish_rank = finishRank;
+
             return {
                 success: true,
                 gameEnded: false,
