@@ -1752,6 +1752,592 @@ const UI = (() => {
         }, 50);
     }
 
+    // ============================================================================
+    // COMPETITION RENDERING FUNCTIONS
+    // ============================================================================
+
+    /**
+     * Render competitions hub page
+     */
+    async function renderCompetitionsHub(activeTab = 'tournaments') {
+        const container = document.getElementById('competitions-content');
+        if (!container) return;
+
+        container.innerHTML = '<p class="placeholder">Loading competitions...</p>';
+
+        try {
+            if (activeTab === 'tournaments') {
+                const tournaments = await Storage.getTournaments();
+                renderTournamentsList(container, tournaments);
+            } else {
+                const leagues = await Storage.getLeagues();
+                renderLeaguesList(container, leagues);
+            }
+        } catch (error) {
+            console.error('Error rendering competitions:', error);
+            container.innerHTML = '<p class="placeholder">Error loading competitions</p>';
+        }
+    }
+
+    /**
+     * Render tournaments list
+     */
+    function renderTournamentsList(container, tournaments) {
+        if (tournaments.length === 0) {
+            container.innerHTML = '<p class="placeholder">No tournaments yet. Create your first tournament!</p>';
+            return;
+        }
+
+        const html = tournaments.map(t => {
+            const statusColors = {
+                'registration': '#ff9800',
+                'in_progress': '#4caf50',
+                'completed': '#9e9e9e'
+            };
+            const statusLabels = {
+                'registration': 'Registration Open',
+                'in_progress': 'In Progress',
+                'completed': 'Completed'
+            };
+
+            const participantCount = t.participants?.length || 0;
+            const completedMatches = t.matches?.filter(m => m.status === 'completed').length || 0;
+            const totalMatches = t.matches?.length || 0;
+
+            return `
+                <div class="competition-card" onclick="Router.navigate('tournament', {tournamentId: '${t.id}'})">
+                    <div class="competition-card-header">
+                        <div class="competition-card-title">${t.name}</div>
+                        <span class="competition-status-badge" style="background: ${statusColors[t.status]};">
+                            ${statusLabels[t.status]}
+                        </span>
+                    </div>
+                    <div class="competition-card-info">
+                        <span>${t.format === 'single_elimination' ? 'Single Elim.' : 'Double Elim.'}</span>
+                        <span>${t.game_type} Points</span>
+                        <span>${participantCount}/${t.max_players} Players</span>
+                    </div>
+                    <div class="competition-card-footer">
+                        ${t.status === 'completed'
+                            ? `<span>Winner: ${t.winner_name || 'TBD'}</span>`
+                            : `<span>Matches: ${completedMatches}/${totalMatches}</span>`
+                        }
+                        <span>${new Date(t.created_at).toLocaleDateString()}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        container.innerHTML = html;
+    }
+
+    /**
+     * Render leagues list
+     */
+    function renderLeaguesList(container, leagues) {
+        if (leagues.length === 0) {
+            container.innerHTML = '<p class="placeholder">No leagues yet. Create your first league!</p>';
+            return;
+        }
+
+        const html = leagues.map(l => {
+            const statusColors = {
+                'registration': '#ff9800',
+                'in_progress': '#4caf50',
+                'completed': '#9e9e9e'
+            };
+            const statusLabels = {
+                'registration': 'Registration Open',
+                'in_progress': 'In Progress',
+                'completed': 'Completed'
+            };
+
+            const participantCount = l.participants?.length || 0;
+            const completedMatches = l.matches?.filter(m => m.status === 'completed').length || 0;
+            const totalMatches = l.matches?.length || 0;
+            const progress = totalMatches > 0 ? Math.round((completedMatches / totalMatches) * 100) : 0;
+
+            return `
+                <div class="competition-card" onclick="Router.navigate('league', {leagueId: '${l.id}'})">
+                    <div class="competition-card-header">
+                        <div class="competition-card-title">${l.name}</div>
+                        <span class="competition-status-badge" style="background: ${statusColors[l.status]};">
+                            ${statusLabels[l.status]}
+                        </span>
+                    </div>
+                    <div class="competition-card-info">
+                        <span>Round Robin</span>
+                        <span>${l.game_type} Points</span>
+                        <span>${participantCount} Players</span>
+                    </div>
+                    ${l.status === 'in_progress' ? `
+                        <div class="competition-progress">
+                            <div class="competition-progress-bar" style="width: ${progress}%;"></div>
+                        </div>
+                    ` : ''}
+                    <div class="competition-card-footer">
+                        ${l.status === 'completed'
+                            ? `<span>Winner: ${l.winner_name || 'TBD'}</span>`
+                            : `<span>Progress: ${completedMatches}/${totalMatches} matches</span>`
+                        }
+                        <span>${new Date(l.created_at).toLocaleDateString()}</span>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        container.innerHTML = html;
+    }
+
+    /**
+     * Render tournament detail view with bracket
+     */
+    async function renderTournamentDetail(tournament) {
+        const container = document.getElementById('tournament-detail-content');
+        if (!container || !tournament) return;
+
+        const totalRounds = Math.log2(tournament.max_players);
+        const bracket = Tournament.getBracket(tournament);
+
+        let html = `
+            <div class="tournament-header">
+                <div class="tournament-info">
+                    <h2>${tournament.name}</h2>
+                    <div class="tournament-meta">
+                        <span>${tournament.format === 'single_elimination' ? 'Single Elimination' : 'Double Elimination'}</span>
+                        <span>${tournament.game_type} Points</span>
+                        <span>${tournament.participants?.length || 0}/${tournament.max_players} Players</span>
+                    </div>
+                </div>
+                ${tournament.status === 'completed' ? `
+                    <div class="tournament-winner">
+                        <span class="winner-label">Champion</span>
+                        <span class="winner-name">${tournament.winner_name}</span>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+
+        // Registration phase - show player management
+        if (tournament.status === 'registration') {
+            html += renderTournamentRegistration(tournament);
+        } else {
+            // In progress or completed - show bracket
+            html += renderTournamentBracket(tournament, bracket, totalRounds);
+        }
+
+        // Ready matches section
+        if (tournament.status === 'in_progress') {
+            const readyMatches = Tournament.getReadyMatches(tournament);
+            const inProgressMatches = Tournament.getInProgressMatches(tournament);
+
+            if (inProgressMatches.length > 0) {
+                html += `
+                    <div class="matches-section">
+                        <h3>In Progress</h3>
+                        <div class="matches-list">
+                            ${inProgressMatches.map(m => `
+                                <div class="match-card in-progress" onclick="Router.navigate('game', {gameId: '${m.game_id}'})">
+                                    <div class="match-players">
+                                        <span>${m.player1_name}</span>
+                                        <span class="vs">vs</span>
+                                        <span>${m.player2_name}</span>
+                                    </div>
+                                    <div class="match-round">${Tournament.getRoundName(m.round, totalRounds, tournament.format)}</div>
+                                    <button class="btn btn-small btn-primary">Watch</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+
+            if (readyMatches.length > 0) {
+                html += `
+                    <div class="matches-section">
+                        <h3>Ready to Play</h3>
+                        <div class="matches-list">
+                            ${readyMatches.map(m => `
+                                <div class="match-card ready" data-match-id="${m.id}">
+                                    <div class="match-players">
+                                        <span>${m.player1_name}</span>
+                                        <span class="vs">vs</span>
+                                        <span>${m.player2_name}</span>
+                                    </div>
+                                    <div class="match-round">${Tournament.getRoundName(m.round, totalRounds, tournament.format)}</div>
+                                    <button class="btn btn-small btn-success start-match-btn">Start Match</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        container.innerHTML = html;
+    }
+
+    /**
+     * Render tournament registration view
+     */
+    function renderTournamentRegistration(tournament) {
+        let html = `
+            <div class="registration-section">
+                <h3>Player Registration (${tournament.participants?.length || 0}/${tournament.max_players})</h3>
+                <div class="player-input-row">
+                    <input type="text" id="new-participant-name" placeholder="Enter player name" class="form-input">
+                    <button class="btn btn-primary" id="add-participant-btn">Add Player</button>
+                </div>
+                <div class="participants-list">
+                    ${(tournament.participants || []).map((p, i) => `
+                        <div class="participant-item">
+                            <span class="participant-position">#${i + 1}</span>
+                            <span class="participant-name">${p.name}</span>
+                            <button class="btn btn-small btn-danger remove-participant-btn" data-name="${p.name}">Remove</button>
+                        </div>
+                    `).join('')}
+                </div>
+                ${tournament.participants?.length >= 2 ? `
+                    <div class="registration-actions">
+                        <button class="btn btn-secondary" id="shuffle-participants-btn">Shuffle Order</button>
+                        <button class="btn btn-success btn-large" id="start-tournament-btn">Start Tournament</button>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+        return html;
+    }
+
+    /**
+     * Render tournament bracket visualization
+     */
+    function renderTournamentBracket(tournament, bracket, totalRounds) {
+        let html = '<div class="bracket-container">';
+
+        // Winners bracket
+        html += '<div class="bracket-section winners-bracket">';
+        html += '<h4>Winners Bracket</h4>';
+        html += '<div class="bracket-rounds">';
+
+        for (let round = 1; round <= totalRounds; round++) {
+            const roundMatches = bracket.winners[round] || [];
+            const roundName = Tournament.getRoundName(round, totalRounds, tournament.format);
+
+            html += `
+                <div class="bracket-round">
+                    <div class="round-header">${roundName}</div>
+                    <div class="round-matches">
+                        ${roundMatches.map(m => renderBracketMatch(m)).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        html += '</div></div>';
+
+        // Losers bracket (if double elimination)
+        if (tournament.format === 'double_elimination' && Object.keys(bracket.losers).length > 0) {
+            html += '<div class="bracket-section losers-bracket">';
+            html += '<h4>Losers Bracket</h4>';
+            html += '<div class="bracket-rounds">';
+
+            Object.keys(bracket.losers).sort((a, b) => a - b).forEach(round => {
+                const roundMatches = bracket.losers[round] || [];
+                html += `
+                    <div class="bracket-round">
+                        <div class="round-header">Losers Round ${round}</div>
+                        <div class="round-matches">
+                            ${roundMatches.map(m => renderBracketMatch(m)).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div></div>';
+
+            // Grand finals
+            if (bracket.grandFinals) {
+                html += '<div class="bracket-section grand-finals">';
+                html += '<h4>Grand Finals</h4>';
+                html += renderBracketMatch(bracket.grandFinals);
+                html += '</div>';
+            }
+        }
+
+        html += '</div>';
+        return html;
+    }
+
+    /**
+     * Render a single bracket match
+     */
+    function renderBracketMatch(match) {
+        const statusClass = match.status === 'completed' ? 'completed' :
+                           match.status === 'ready' ? 'ready' :
+                           match.status === 'in_progress' ? 'in-progress' : 'pending';
+
+        return `
+            <div class="bracket-match ${statusClass}" data-match-id="${match.id}">
+                <div class="match-slot ${match.winner_id === match.player1_id ? 'winner' : ''}">
+                    <span class="player-name">${match.player1_name || 'TBD'}</span>
+                    ${match.status === 'completed' && match.winner_id === match.player1_id ? '<span class="winner-mark">✓</span>' : ''}
+                </div>
+                <div class="match-slot ${match.winner_id === match.player2_id ? 'winner' : ''}">
+                    <span class="player-name">${match.player2_name || 'TBD'}</span>
+                    ${match.status === 'completed' && match.winner_id === match.player2_id ? '<span class="winner-mark">✓</span>' : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Render league detail view
+     */
+    async function renderLeagueDetail(league) {
+        const container = document.getElementById('league-detail-content');
+        if (!container || !league) return;
+
+        let html = `
+            <div class="league-header">
+                <div class="league-info">
+                    <h2>${league.name}</h2>
+                    <div class="league-meta">
+                        <span>Round Robin</span>
+                        <span>${league.game_type} Points</span>
+                        <span>${league.participants?.length || 0} Players</span>
+                        <span>W:${league.points_for_win} D:${league.points_for_draw} L:${league.points_for_loss}</span>
+                    </div>
+                </div>
+                ${league.status === 'completed' ? `
+                    <div class="league-winner">
+                        <span class="winner-label">Champion</span>
+                        <span class="winner-name">${league.winner_name}</span>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+
+        // Registration phase
+        if (league.status === 'registration') {
+            html += renderLeagueRegistration(league);
+        } else {
+            // Show standings table
+            html += renderLeagueStandings(league);
+
+            // Show fixtures
+            html += renderLeagueFixtures(league);
+        }
+
+        container.innerHTML = html;
+    }
+
+    /**
+     * Render league registration view
+     */
+    function renderLeagueRegistration(league) {
+        let html = `
+            <div class="registration-section">
+                <h3>Player Registration (${league.participants?.length || 0} players)</h3>
+                <div class="player-input-row">
+                    <input type="text" id="new-participant-name" placeholder="Enter player name" class="form-input">
+                    <button class="btn btn-primary" id="add-participant-btn">Add Player</button>
+                </div>
+                <div class="participants-list">
+                    ${(league.participants || []).map((p, i) => `
+                        <div class="participant-item">
+                            <span class="participant-position">#${i + 1}</span>
+                            <span class="participant-name">${p.name}</span>
+                            <button class="btn btn-small btn-danger remove-participant-btn" data-name="${p.name}">Remove</button>
+                        </div>
+                    `).join('')}
+                </div>
+                ${league.participants?.length >= 2 ? `
+                    <div class="registration-actions">
+                        <button class="btn btn-success btn-large" id="start-league-btn">Generate Fixtures & Start</button>
+                    </div>
+                ` : ''}
+            </div>
+        `;
+        return html;
+    }
+
+    /**
+     * Render league standings table
+     */
+    function renderLeagueStandings(league) {
+        const standings = League.getStandings(league);
+
+        let html = `
+            <div class="standings-section">
+                <h3>Standings</h3>
+                <div class="standings-table">
+                    <div class="standings-header">
+                        <span class="col-rank">#</span>
+                        <span class="col-name">Player</span>
+                        <span class="col-p">P</span>
+                        <span class="col-w">W</span>
+                        <span class="col-d">D</span>
+                        <span class="col-l">L</span>
+                        <span class="col-diff">+/-</span>
+                        <span class="col-pts">PTS</span>
+                    </div>
+                    ${standings.map((p, i) => `
+                        <div class="standings-row ${i === 0 ? 'leader' : ''}">
+                            <span class="col-rank">${p.rank}</span>
+                            <span class="col-name">${p.name}</span>
+                            <span class="col-p">${p.played}</span>
+                            <span class="col-w">${p.wins}</span>
+                            <span class="col-d">${p.draws}</span>
+                            <span class="col-l">${p.losses}</span>
+                            <span class="col-diff">${p.legDiff >= 0 ? '+' : ''}${p.legDiff}</span>
+                            <span class="col-pts">${p.points}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+        return html;
+    }
+
+    /**
+     * Render league fixtures
+     */
+    function renderLeagueFixtures(league) {
+        const fixturesByRound = League.getFixturesByRound(league);
+        const pendingMatches = League.getPendingMatches(league);
+        const inProgressMatches = League.getInProgressMatches(league);
+
+        let html = '';
+
+        // In progress matches
+        if (inProgressMatches.length > 0) {
+            html += `
+                <div class="fixtures-section">
+                    <h3>In Progress</h3>
+                    <div class="fixtures-list">
+                        ${inProgressMatches.map(m => `
+                            <div class="fixture-card in-progress" onclick="Router.navigate('game', {gameId: '${m.game_id}'})">
+                                <span class="fixture-player">${m.player1_name}</span>
+                                <span class="fixture-vs">vs</span>
+                                <span class="fixture-player">${m.player2_name}</span>
+                                <button class="btn btn-small btn-primary">Watch</button>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Pending matches (ready to play)
+        if (pendingMatches.length > 0 && league.status === 'in_progress') {
+            html += `
+                <div class="fixtures-section">
+                    <h3>Ready to Play</h3>
+                    <div class="fixtures-list">
+                        ${pendingMatches.slice(0, 10).map(m => `
+                            <div class="fixture-card pending" data-match-id="${m.id}">
+                                <span class="fixture-player">${m.player1_name}</span>
+                                <span class="fixture-vs">vs</span>
+                                <span class="fixture-player">${m.player2_name}</span>
+                                <button class="btn btn-small btn-success start-match-btn">Play</button>
+                            </div>
+                        `).join('')}
+                        ${pendingMatches.length > 10 ? `<p class="more-fixtures">+ ${pendingMatches.length - 10} more fixtures</p>` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // All fixtures by round
+        html += `
+            <div class="fixtures-section">
+                <h3>All Fixtures</h3>
+                ${Object.keys(fixturesByRound).map(round => `
+                    <div class="fixture-round">
+                        <div class="fixture-round-header">Round ${round}</div>
+                        <div class="fixtures-list">
+                            ${fixturesByRound[round].map(m => {
+                                const statusClass = m.status === 'completed' ? 'completed' :
+                                                   m.status === 'in_progress' ? 'in-progress' : 'pending';
+                                return `
+                                    <div class="fixture-card ${statusClass}" ${m.game_id ? `onclick="Router.navigate('game-detail', {gameId: '${m.game_id}'})"` : ''}>
+                                        <span class="fixture-player ${m.winner_id === m.player1_id ? 'winner' : ''}">${m.player1_name}</span>
+                                        <span class="fixture-result">
+                                            ${m.status === 'completed'
+                                                ? (m.is_draw ? 'Draw' : (m.winner_name || ''))
+                                                : 'vs'
+                                            }
+                                        </span>
+                                        <span class="fixture-player ${m.winner_id === m.player2_id ? 'winner' : ''}">${m.player2_name}</span>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
+        return html;
+    }
+
+    /**
+     * Render new tournament form
+     */
+    function renderNewTournamentForm() {
+        // Initialize player count handling
+        const playerCountInput = document.getElementById('tournament-player-count');
+        const playerNamesContainer = document.getElementById('tournament-player-names');
+
+        if (!playerCountInput || !playerNamesContainer) return;
+
+        function updatePlayerInputs() {
+            const count = parseInt(playerCountInput.value);
+            const existingValues = [];
+            playerNamesContainer.querySelectorAll('.player-name-input').forEach(input => {
+                existingValues.push(input.value);
+            });
+
+            playerNamesContainer.innerHTML = '';
+            for (let i = 0; i < count; i++) {
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.placeholder = `Player ${i + 1}`;
+                input.className = 'player-name-input form-input';
+                if (i < existingValues.length) {
+                    input.value = existingValues[i];
+                }
+                playerNamesContainer.appendChild(input);
+            }
+        }
+
+        playerCountInput.addEventListener('change', updatePlayerInputs);
+        updatePlayerInputs();
+    }
+
+    /**
+     * Render new league form
+     */
+    function renderNewLeagueForm() {
+        // Initialize player inputs
+        const addPlayerBtn = document.getElementById('add-league-player-btn');
+        const playerNamesContainer = document.getElementById('league-player-names');
+
+        if (!addPlayerBtn || !playerNamesContainer) return;
+
+        addPlayerBtn.addEventListener('click', () => {
+            const count = playerNamesContainer.querySelectorAll('.player-name-input').length;
+            const input = document.createElement('div');
+            input.className = 'league-player-input-row';
+            input.innerHTML = `
+                <input type="text" placeholder="Player ${count + 1}" class="player-name-input form-input">
+                <button type="button" class="btn btn-small btn-danger remove-player-btn">Remove</button>
+            `;
+            input.querySelector('.remove-player-btn').addEventListener('click', () => input.remove());
+            playerNamesContainer.appendChild(input);
+        });
+    }
+
     // Public API
     return {
         showToast,
@@ -1781,6 +2367,16 @@ const UI = (() => {
         renderPlayerStatsWidgets,
         openComparisonModal,
         closeComparisonModal,
-        runPlayerComparison
+        runPlayerComparison,
+        // Competition functions
+        renderCompetitionsHub,
+        renderTournamentsList,
+        renderLeaguesList,
+        renderTournamentDetail,
+        renderLeagueDetail,
+        renderNewTournamentForm,
+        renderNewLeagueForm,
+        renderLeagueStandings,
+        renderLeagueFixtures
     };
 })();

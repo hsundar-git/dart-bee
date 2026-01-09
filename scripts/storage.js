@@ -843,6 +843,819 @@ const Storage = (() => {
         });
     }
 
+    // ============================================================================
+    // TOURNAMENT STORAGE OPERATIONS
+    // ============================================================================
+
+    /**
+     * Save a new tournament
+     */
+    async function saveTournament(tournament) {
+        try {
+            const sb = ensureInitialized();
+
+            // Insert tournament
+            const { data: tournamentData, error: tournamentError } = await sb
+                .from('tournaments')
+                .insert([{
+                    id: tournament.id,
+                    name: tournament.name,
+                    created_at: tournament.created_at,
+                    status: tournament.status,
+                    format: tournament.format,
+                    game_type: tournament.game_type,
+                    win_condition: tournament.win_condition,
+                    scoring_mode: tournament.scoring_mode,
+                    max_players: tournament.max_players,
+                    device_id: tournament.device_id
+                }])
+                .select();
+
+            if (tournamentError) {
+                console.error('Error inserting tournament:', tournamentError);
+                throw tournamentError;
+            }
+
+            console.log('✓ Tournament saved:', tournament.name);
+            return tournamentData ? tournamentData[0] : tournament;
+        } catch (error) {
+            console.error('saveTournament error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get all tournaments
+     */
+    async function getTournaments(filters = {}) {
+        try {
+            const sb = ensureInitialized();
+            let query = sb
+                .from('tournaments')
+                .select(`
+                    *,
+                    winner:players!winner_id(id, name),
+                    tournament_participants(
+                        id,
+                        bracket_position,
+                        eliminated,
+                        final_placement,
+                        player:players(id, name)
+                    ),
+                    tournament_matches(
+                        id,
+                        round,
+                        match_number,
+                        status,
+                        player1:players!player1_id(id, name),
+                        player2:players!player2_id(id, name),
+                        match_winner:players!winner_id(id, name)
+                    )
+                `)
+                .order('created_at', { ascending: false });
+
+            if (filters.status) {
+                query = query.eq('status', filters.status);
+            }
+
+            if (filters.deviceId) {
+                query = query.eq('device_id', filters.deviceId);
+            }
+
+            const { data, error } = await query;
+
+            if (error) {
+                console.error('Error fetching tournaments:', error);
+                throw error;
+            }
+
+            return (data || []).map(transformTournamentFromDB);
+        } catch (error) {
+            console.error('getTournaments error:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Get a single tournament by ID
+     */
+    async function getTournament(tournamentId) {
+        try {
+            const sb = ensureInitialized();
+            const { data, error } = await sb
+                .from('tournaments')
+                .select(`
+                    *,
+                    winner:players!winner_id(id, name),
+                    tournament_participants(
+                        id,
+                        bracket_position,
+                        eliminated,
+                        eliminated_in_round,
+                        final_placement,
+                        player:players(id, name)
+                    ),
+                    tournament_matches(
+                        id,
+                        round,
+                        match_number,
+                        status,
+                        game_id,
+                        winner_next_match_id,
+                        loser_next_match_id,
+                        player1:players!player1_id(id, name),
+                        player2:players!player2_id(id, name),
+                        match_winner:players!winner_id(id, name)
+                    )
+                `)
+                .eq('id', tournamentId)
+                .single();
+
+            if (error) {
+                console.error('Error fetching tournament:', error);
+                throw error;
+            }
+
+            return transformTournamentFromDB(data);
+        } catch (error) {
+            console.error('getTournament error:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Transform tournament from DB format
+     */
+    function transformTournamentFromDB(dbTournament) {
+        if (!dbTournament) return null;
+
+        return {
+            id: dbTournament.id,
+            name: dbTournament.name,
+            created_at: dbTournament.created_at,
+            updated_at: dbTournament.updated_at,
+            status: dbTournament.status,
+            format: dbTournament.format,
+            game_type: dbTournament.game_type,
+            win_condition: dbTournament.win_condition,
+            scoring_mode: dbTournament.scoring_mode,
+            max_players: dbTournament.max_players,
+            device_id: dbTournament.device_id,
+            winner_id: dbTournament.winner_id,
+            winner_name: dbTournament.winner?.name,
+            participants: (dbTournament.tournament_participants || []).map(tp => ({
+                id: tp.id,
+                player_id: tp.player?.id,
+                name: tp.player?.name || 'Unknown',
+                bracket_position: tp.bracket_position,
+                eliminated: tp.eliminated,
+                eliminated_in_round: tp.eliminated_in_round,
+                final_placement: tp.final_placement
+            })),
+            matches: (dbTournament.tournament_matches || []).map(tm => ({
+                id: tm.id,
+                tournament_id: dbTournament.id,
+                round: tm.round,
+                match_number: tm.match_number,
+                player1_id: tm.player1?.id,
+                player1_name: tm.player1?.name,
+                player2_id: tm.player2?.id,
+                player2_name: tm.player2?.name,
+                winner_id: tm.match_winner?.id,
+                winner_name: tm.match_winner?.name,
+                status: tm.status,
+                game_id: tm.game_id,
+                winner_next_match_id: tm.winner_next_match_id,
+                loser_next_match_id: tm.loser_next_match_id
+            }))
+        };
+    }
+
+    /**
+     * Update tournament
+     */
+    async function updateTournament(tournamentId, updates) {
+        try {
+            const sb = ensureInitialized();
+
+            const tournamentUpdates = {
+                status: updates.status,
+                updated_at: new Date().toISOString()
+            };
+
+            if (updates.winner_name) {
+                const { data: playerData } = await sb
+                    .from('players')
+                    .select('id')
+                    .eq('name', updates.winner_name)
+                    .single();
+
+                if (playerData) {
+                    tournamentUpdates.winner_id = playerData.id;
+                }
+            }
+
+            const { data, error } = await sb
+                .from('tournaments')
+                .update(tournamentUpdates)
+                .eq('id', tournamentId)
+                .select();
+
+            if (error) {
+                console.error('Error updating tournament:', error);
+                throw error;
+            }
+
+            return data ? data[0] : null;
+        } catch (error) {
+            console.error('updateTournament error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Save tournament participants
+     */
+    async function saveTournamentParticipants(tournamentId, participants) {
+        try {
+            const sb = ensureInitialized();
+
+            // Get or create player IDs
+            const participantsData = [];
+            for (const p of participants) {
+                const player = await getOrCreatePlayer(p.name);
+                participantsData.push({
+                    tournament_id: tournamentId,
+                    player_id: player.id,
+                    bracket_position: p.bracket_position,
+                    eliminated: p.eliminated || false,
+                    eliminated_in_round: p.eliminated_in_round,
+                    final_placement: p.final_placement
+                });
+            }
+
+            const { data, error } = await sb
+                .from('tournament_participants')
+                .insert(participantsData)
+                .select();
+
+            if (error) {
+                console.error('Error saving tournament participants:', error);
+                throw error;
+            }
+
+            return data;
+        } catch (error) {
+            console.error('saveTournamentParticipants error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Save tournament matches
+     */
+    async function saveTournamentMatches(tournamentId, matches) {
+        try {
+            const sb = ensureInitialized();
+
+            // Get player IDs for all players in matches
+            const playerIds = {};
+            for (const m of matches) {
+                if (m.player1_name && !playerIds[m.player1_name]) {
+                    const player = await getOrCreatePlayer(m.player1_name);
+                    playerIds[m.player1_name] = player.id;
+                }
+                if (m.player2_name && !playerIds[m.player2_name]) {
+                    const player = await getOrCreatePlayer(m.player2_name);
+                    playerIds[m.player2_name] = player.id;
+                }
+                if (m.winner_name && !playerIds[m.winner_name]) {
+                    const player = await getOrCreatePlayer(m.winner_name);
+                    playerIds[m.winner_name] = player.id;
+                }
+            }
+
+            const matchesData = matches.map(m => ({
+                id: m.id,
+                tournament_id: tournamentId,
+                round: m.round,
+                match_number: m.match_number,
+                player1_id: m.player1_name ? playerIds[m.player1_name] : null,
+                player2_id: m.player2_name ? playerIds[m.player2_name] : null,
+                winner_id: m.winner_name ? playerIds[m.winner_name] : null,
+                status: m.status,
+                game_id: m.game_id,
+                winner_next_match_id: m.winner_next_match_id,
+                loser_next_match_id: m.loser_next_match_id
+            }));
+
+            const { data, error } = await sb
+                .from('tournament_matches')
+                .insert(matchesData)
+                .select();
+
+            if (error) {
+                console.error('Error saving tournament matches:', error);
+                throw error;
+            }
+
+            return data;
+        } catch (error) {
+            console.error('saveTournamentMatches error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Update tournament match
+     */
+    async function updateTournamentMatch(matchId, updates) {
+        try {
+            const sb = ensureInitialized();
+
+            const matchUpdates = {
+                status: updates.status,
+                game_id: updates.game_id,
+                updated_at: new Date().toISOString()
+            };
+
+            if (updates.player1_name) {
+                const { data: p1 } = await sb
+                    .from('players')
+                    .select('id')
+                    .eq('name', updates.player1_name)
+                    .single();
+                if (p1) matchUpdates.player1_id = p1.id;
+            }
+
+            if (updates.player2_name) {
+                const { data: p2 } = await sb
+                    .from('players')
+                    .select('id')
+                    .eq('name', updates.player2_name)
+                    .single();
+                if (p2) matchUpdates.player2_id = p2.id;
+            }
+
+            if (updates.winner_name) {
+                const { data: winner } = await sb
+                    .from('players')
+                    .select('id')
+                    .eq('name', updates.winner_name)
+                    .single();
+                if (winner) matchUpdates.winner_id = winner.id;
+            }
+
+            const { data, error } = await sb
+                .from('tournament_matches')
+                .update(matchUpdates)
+                .eq('id', matchId)
+                .select();
+
+            if (error) {
+                console.error('Error updating tournament match:', error);
+                throw error;
+            }
+
+            return data ? data[0] : null;
+        } catch (error) {
+            console.error('updateTournamentMatch error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Update tournament participant
+     */
+    async function updateTournamentParticipant(participantId, updates) {
+        try {
+            const sb = ensureInitialized();
+
+            const { data, error } = await sb
+                .from('tournament_participants')
+                .update({
+                    eliminated: updates.eliminated,
+                    eliminated_in_round: updates.eliminated_in_round,
+                    final_placement: updates.final_placement
+                })
+                .eq('id', participantId)
+                .select();
+
+            if (error) {
+                console.error('Error updating tournament participant:', error);
+                throw error;
+            }
+
+            return data ? data[0] : null;
+        } catch (error) {
+            console.error('updateTournamentParticipant error:', error);
+            throw error;
+        }
+    }
+
+    // ============================================================================
+    // LEAGUE STORAGE OPERATIONS
+    // ============================================================================
+
+    /**
+     * Save a new league
+     */
+    async function saveLeague(league) {
+        try {
+            const sb = ensureInitialized();
+
+            const { data: leagueData, error: leagueError } = await sb
+                .from('leagues')
+                .insert([{
+                    id: league.id,
+                    name: league.name,
+                    created_at: league.created_at,
+                    status: league.status,
+                    game_type: league.game_type,
+                    win_condition: league.win_condition,
+                    scoring_mode: league.scoring_mode,
+                    matches_per_pairing: league.matches_per_pairing,
+                    points_for_win: league.points_for_win,
+                    points_for_draw: league.points_for_draw,
+                    points_for_loss: league.points_for_loss,
+                    device_id: league.device_id
+                }])
+                .select();
+
+            if (leagueError) {
+                console.error('Error inserting league:', leagueError);
+                throw leagueError;
+            }
+
+            console.log('✓ League saved:', league.name);
+            return leagueData ? leagueData[0] : league;
+        } catch (error) {
+            console.error('saveLeague error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Get all leagues
+     */
+    async function getLeagues(filters = {}) {
+        try {
+            const sb = ensureInitialized();
+            let query = sb
+                .from('leagues')
+                .select(`
+                    *,
+                    winner:players!winner_id(id, name),
+                    league_participants(
+                        id,
+                        matches_played,
+                        wins,
+                        draws,
+                        losses,
+                        points,
+                        legs_won,
+                        legs_lost,
+                        player:players(id, name)
+                    ),
+                    league_matches(
+                        id,
+                        status,
+                        fixture_round,
+                        is_draw,
+                        player1:players!player1_id(id, name),
+                        player2:players!player2_id(id, name),
+                        match_winner:players!winner_id(id, name)
+                    )
+                `)
+                .order('created_at', { ascending: false });
+
+            if (filters.status) {
+                query = query.eq('status', filters.status);
+            }
+
+            if (filters.deviceId) {
+                query = query.eq('device_id', filters.deviceId);
+            }
+
+            const { data, error } = await query;
+
+            if (error) {
+                console.error('Error fetching leagues:', error);
+                throw error;
+            }
+
+            return (data || []).map(transformLeagueFromDB);
+        } catch (error) {
+            console.error('getLeagues error:', error);
+            return [];
+        }
+    }
+
+    /**
+     * Get a single league by ID
+     */
+    async function getLeague(leagueId) {
+        try {
+            const sb = ensureInitialized();
+            const { data, error } = await sb
+                .from('leagues')
+                .select(`
+                    *,
+                    winner:players!winner_id(id, name),
+                    league_participants(
+                        id,
+                        matches_played,
+                        wins,
+                        draws,
+                        losses,
+                        points,
+                        legs_won,
+                        legs_lost,
+                        player:players(id, name)
+                    ),
+                    league_matches(
+                        id,
+                        status,
+                        fixture_round,
+                        is_draw,
+                        game_id,
+                        player1:players!player1_id(id, name),
+                        player2:players!player2_id(id, name),
+                        match_winner:players!winner_id(id, name)
+                    )
+                `)
+                .eq('id', leagueId)
+                .single();
+
+            if (error) {
+                console.error('Error fetching league:', error);
+                throw error;
+            }
+
+            return transformLeagueFromDB(data);
+        } catch (error) {
+            console.error('getLeague error:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Transform league from DB format
+     */
+    function transformLeagueFromDB(dbLeague) {
+        if (!dbLeague) return null;
+
+        return {
+            id: dbLeague.id,
+            name: dbLeague.name,
+            created_at: dbLeague.created_at,
+            updated_at: dbLeague.updated_at,
+            status: dbLeague.status,
+            game_type: dbLeague.game_type,
+            win_condition: dbLeague.win_condition,
+            scoring_mode: dbLeague.scoring_mode,
+            matches_per_pairing: dbLeague.matches_per_pairing,
+            points_for_win: dbLeague.points_for_win,
+            points_for_draw: dbLeague.points_for_draw,
+            points_for_loss: dbLeague.points_for_loss,
+            device_id: dbLeague.device_id,
+            winner_id: dbLeague.winner_id,
+            winner_name: dbLeague.winner?.name,
+            participants: (dbLeague.league_participants || []).map(lp => ({
+                id: lp.id,
+                player_id: lp.player?.id,
+                name: lp.player?.name || 'Unknown',
+                matches_played: lp.matches_played,
+                wins: lp.wins,
+                draws: lp.draws,
+                losses: lp.losses,
+                points: lp.points,
+                legs_won: lp.legs_won,
+                legs_lost: lp.legs_lost
+            })),
+            matches: (dbLeague.league_matches || []).map(lm => ({
+                id: lm.id,
+                league_id: dbLeague.id,
+                player1_id: lm.player1?.id,
+                player1_name: lm.player1?.name,
+                player2_id: lm.player2?.id,
+                player2_name: lm.player2?.name,
+                winner_id: lm.match_winner?.id,
+                winner_name: lm.match_winner?.name,
+                is_draw: lm.is_draw,
+                status: lm.status,
+                fixture_round: lm.fixture_round,
+                game_id: lm.game_id
+            }))
+        };
+    }
+
+    /**
+     * Update league
+     */
+    async function updateLeague(leagueId, updates) {
+        try {
+            const sb = ensureInitialized();
+
+            const leagueUpdates = {
+                status: updates.status,
+                updated_at: new Date().toISOString()
+            };
+
+            if (updates.winner_name) {
+                const { data: playerData } = await sb
+                    .from('players')
+                    .select('id')
+                    .eq('name', updates.winner_name)
+                    .single();
+
+                if (playerData) {
+                    leagueUpdates.winner_id = playerData.id;
+                }
+            }
+
+            const { data, error } = await sb
+                .from('leagues')
+                .update(leagueUpdates)
+                .eq('id', leagueId)
+                .select();
+
+            if (error) {
+                console.error('Error updating league:', error);
+                throw error;
+            }
+
+            return data ? data[0] : null;
+        } catch (error) {
+            console.error('updateLeague error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Save league participants
+     */
+    async function saveLeagueParticipants(leagueId, participants) {
+        try {
+            const sb = ensureInitialized();
+
+            const participantsData = [];
+            for (const p of participants) {
+                const player = await getOrCreatePlayer(p.name);
+                participantsData.push({
+                    league_id: leagueId,
+                    player_id: player.id,
+                    matches_played: p.matches_played || 0,
+                    wins: p.wins || 0,
+                    draws: p.draws || 0,
+                    losses: p.losses || 0,
+                    points: p.points || 0,
+                    legs_won: p.legs_won || 0,
+                    legs_lost: p.legs_lost || 0
+                });
+            }
+
+            const { data, error } = await sb
+                .from('league_participants')
+                .insert(participantsData)
+                .select();
+
+            if (error) {
+                console.error('Error saving league participants:', error);
+                throw error;
+            }
+
+            return data;
+        } catch (error) {
+            console.error('saveLeagueParticipants error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Save league matches
+     */
+    async function saveLeagueMatches(leagueId, matches) {
+        try {
+            const sb = ensureInitialized();
+
+            const playerIds = {};
+            for (const m of matches) {
+                if (m.player1_name && !playerIds[m.player1_name]) {
+                    const player = await getOrCreatePlayer(m.player1_name);
+                    playerIds[m.player1_name] = player.id;
+                }
+                if (m.player2_name && !playerIds[m.player2_name]) {
+                    const player = await getOrCreatePlayer(m.player2_name);
+                    playerIds[m.player2_name] = player.id;
+                }
+            }
+
+            const matchesData = matches.map(m => ({
+                id: m.id,
+                league_id: leagueId,
+                player1_id: playerIds[m.player1_name],
+                player2_id: playerIds[m.player2_name],
+                winner_id: m.winner_name ? playerIds[m.winner_name] : null,
+                is_draw: m.is_draw || false,
+                status: m.status,
+                fixture_round: m.fixture_round,
+                game_id: m.game_id
+            }));
+
+            const { data, error } = await sb
+                .from('league_matches')
+                .insert(matchesData)
+                .select();
+
+            if (error) {
+                console.error('Error saving league matches:', error);
+                throw error;
+            }
+
+            return data;
+        } catch (error) {
+            console.error('saveLeagueMatches error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Update league match
+     */
+    async function updateLeagueMatch(matchId, updates) {
+        try {
+            const sb = ensureInitialized();
+
+            const matchUpdates = {
+                status: updates.status,
+                is_draw: updates.is_draw,
+                game_id: updates.game_id,
+                updated_at: new Date().toISOString()
+            };
+
+            if (updates.winner_name) {
+                const { data: winner } = await sb
+                    .from('players')
+                    .select('id')
+                    .eq('name', updates.winner_name)
+                    .single();
+                if (winner) matchUpdates.winner_id = winner.id;
+            } else if (updates.is_draw) {
+                matchUpdates.winner_id = null;
+            }
+
+            const { data, error } = await sb
+                .from('league_matches')
+                .update(matchUpdates)
+                .eq('id', matchId)
+                .select();
+
+            if (error) {
+                console.error('Error updating league match:', error);
+                throw error;
+            }
+
+            return data ? data[0] : null;
+        } catch (error) {
+            console.error('updateLeagueMatch error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Update league participant standings
+     */
+    async function updateLeagueParticipant(participantId, updates) {
+        try {
+            const sb = ensureInitialized();
+
+            const { data, error } = await sb
+                .from('league_participants')
+                .update({
+                    matches_played: updates.matches_played,
+                    wins: updates.wins,
+                    draws: updates.draws,
+                    losses: updates.losses,
+                    points: updates.points,
+                    legs_won: updates.legs_won,
+                    legs_lost: updates.legs_lost
+                })
+                .eq('id', participantId)
+                .select();
+
+            if (error) {
+                console.error('Error updating league participant:', error);
+                throw error;
+            }
+
+            return data ? data[0] : null;
+        } catch (error) {
+            console.error('updateLeagueParticipant error:', error);
+            throw error;
+        }
+    }
+
     // Public API
     return {
         init,
@@ -870,7 +1683,7 @@ const Storage = (() => {
             }
         }, // Expose Supabase client
         getGames,
-        getGamesPaginated, // NEW: Pagination support
+        getGamesPaginated,
         saveGame,
         updateGame,
         getGame,
@@ -879,7 +1692,25 @@ const Storage = (() => {
         getOrCreatePlayer,
         getPlayerGames,
         exportData,
-        generateUUID
+        generateUUID,
+        // Tournament operations
+        saveTournament,
+        getTournaments,
+        getTournament,
+        updateTournament,
+        saveTournamentParticipants,
+        saveTournamentMatches,
+        updateTournamentMatch,
+        updateTournamentParticipant,
+        // League operations
+        saveLeague,
+        getLeagues,
+        getLeague,
+        updateLeague,
+        saveLeagueParticipants,
+        saveLeagueMatches,
+        updateLeagueMatch,
+        updateLeagueParticipant
     };
 })();
 

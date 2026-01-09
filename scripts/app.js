@@ -31,6 +31,10 @@ const App = (() => {
         isOperationInProgress = false;
     }
 
+    // Competition state
+    let currentTournament = null;
+    let currentLeague = null;
+
     /**
      * Initialize the app and setup all event listeners
      */
@@ -43,6 +47,7 @@ const App = (() => {
         setupLeaderboardEvents();
         setupStatsEvents();
         setupModalEvents();
+        setupCompetitionEvents();
     }
 
     /**
@@ -88,6 +93,27 @@ const App = (() => {
 
                 case 'player-profile':
                     await App.viewPlayerProfile(routeInfo.playerName);
+                    break;
+
+                // Competition routes
+                case 'competitions':
+                    await loadCompetitions();
+                    break;
+
+                case 'new-tournament':
+                    loadNewTournament();
+                    break;
+
+                case 'tournament':
+                    await loadTournament(routeInfo.tournamentId);
+                    break;
+
+                case 'new-league':
+                    loadNewLeague();
+                    break;
+
+                case 'league':
+                    await loadLeague(routeInfo.leagueId);
                     break;
 
                 case 'stats':
@@ -173,6 +199,9 @@ const App = (() => {
                         break;
                     case 'leaderboard':
                         Router.navigate('leaderboard');
+                        break;
+                    case 'competitions':
+                        Router.navigate('competitions');
                         break;
                     case 'stats':
                         Router.navigate('stats');
@@ -911,6 +940,480 @@ const App = (() => {
         }
     }
 
+    // ============================================================================
+    // COMPETITION HANDLERS
+    // ============================================================================
+
+    /**
+     * Setup competition page events
+     */
+    function setupCompetitionEvents() {
+        // Competition tab switching
+        document.querySelectorAll('.competition-tab-btn').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                document.querySelectorAll('.competition-tab-btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                const tab = e.target.dataset.tab;
+                await UI.renderCompetitionsHub(tab);
+            });
+        });
+    }
+
+    /**
+     * Load competitions hub
+     */
+    async function loadCompetitions() {
+        UI.showLoader('Loading competitions...');
+        try {
+            UI.showPage('competitions-page');
+            await UI.renderCompetitionsHub('tournaments');
+        } catch (error) {
+            console.error('Error loading competitions:', error);
+            UI.showToast('Failed to load competitions', 'error');
+        } finally {
+            UI.hideLoader();
+        }
+    }
+
+    /**
+     * Load new tournament page
+     */
+    function loadNewTournament() {
+        UI.showPage('new-tournament-page');
+        UI.renderNewTournamentForm();
+
+        // Setup form submission
+        const form = document.getElementById('new-tournament-form');
+        if (form) {
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                await createTournament();
+            };
+        }
+    }
+
+    /**
+     * Create new tournament
+     */
+    async function createTournament() {
+        const name = document.getElementById('tournament-name').value;
+        const format = document.getElementById('tournament-format').value;
+        const maxPlayers = parseInt(document.getElementById('tournament-size').value);
+        const gameType = parseInt(document.getElementById('tournament-game-type').value);
+
+        const tournament = Tournament.create({
+            name,
+            format,
+            maxPlayers,
+            gameType,
+            winCondition: 'exact',
+            scoringMode: 'per-dart'
+        });
+
+        // Add players from form
+        const playerInputs = document.querySelectorAll('#tournament-player-names .player-name-input');
+        playerInputs.forEach(input => {
+            if (input.value.trim()) {
+                Tournament.addParticipant(tournament, input.value.trim());
+            }
+        });
+
+        try {
+            await Storage.saveTournament(tournament);
+            currentTournament = tournament;
+            UI.showToast('Tournament created!', 'success');
+            Router.navigate('tournament', { tournamentId: tournament.id });
+        } catch (error) {
+            console.error('Error creating tournament:', error);
+            UI.showToast('Failed to create tournament', 'error');
+        }
+    }
+
+    /**
+     * Load tournament detail
+     */
+    async function loadTournament(tournamentId) {
+        UI.showLoader('Loading tournament...');
+        try {
+            const tournament = await Storage.getTournament(tournamentId);
+            if (!tournament) {
+                UI.showToast('Tournament not found', 'error');
+                Router.navigate('competitions');
+                return;
+            }
+
+            currentTournament = tournament;
+            UI.showPage('tournament-page');
+            await UI.renderTournamentDetail(tournament);
+            setupTournamentDetailEvents();
+        } catch (error) {
+            console.error('Error loading tournament:', error);
+            UI.showToast('Failed to load tournament', 'error');
+        } finally {
+            UI.hideLoader();
+        }
+    }
+
+    /**
+     * Setup tournament detail page events
+     */
+    function setupTournamentDetailEvents() {
+        // Add participant button
+        const addBtn = document.getElementById('add-participant-btn');
+        if (addBtn) {
+            addBtn.onclick = async () => {
+                const nameInput = document.getElementById('new-participant-name');
+                const name = nameInput?.value.trim();
+                if (!name) {
+                    UI.showToast('Enter a player name', 'warning');
+                    return;
+                }
+
+                const result = Tournament.addParticipant(currentTournament, name);
+                if (!result.success) {
+                    UI.showToast(result.error, 'error');
+                    return;
+                }
+
+                await Storage.saveTournamentParticipants(currentTournament.id, [result.participant]);
+                nameInput.value = '';
+                await UI.renderTournamentDetail(currentTournament);
+                setupTournamentDetailEvents();
+                UI.showToast(`${name} added!`, 'success');
+            };
+        }
+
+        // Remove participant buttons
+        document.querySelectorAll('.remove-participant-btn').forEach(btn => {
+            btn.onclick = async () => {
+                const name = btn.dataset.name;
+                Tournament.removeParticipant(currentTournament, name);
+                await UI.renderTournamentDetail(currentTournament);
+                setupTournamentDetailEvents();
+            };
+        });
+
+        // Shuffle button
+        const shuffleBtn = document.getElementById('shuffle-participants-btn');
+        if (shuffleBtn) {
+            shuffleBtn.onclick = async () => {
+                Tournament.shuffleParticipants(currentTournament);
+                await UI.renderTournamentDetail(currentTournament);
+                setupTournamentDetailEvents();
+                UI.showToast('Shuffled!', 'info');
+            };
+        }
+
+        // Start tournament button
+        const startBtn = document.getElementById('start-tournament-btn');
+        if (startBtn) {
+            startBtn.onclick = async () => {
+                const result = Tournament.generateBracket(currentTournament);
+                if (!result.success) {
+                    UI.showToast(result.error, 'error');
+                    return;
+                }
+
+                try {
+                    await Storage.saveTournamentParticipants(currentTournament.id, currentTournament.participants);
+                    await Storage.saveTournamentMatches(currentTournament.id, currentTournament.matches);
+                    await Storage.updateTournament(currentTournament.id, { status: 'in_progress' });
+
+                    UI.showToast('Tournament started!', 'success');
+                    await UI.renderTournamentDetail(currentTournament);
+                    setupTournamentDetailEvents();
+                } catch (error) {
+                    console.error('Error starting tournament:', error);
+                    UI.showToast('Failed to start tournament', 'error');
+                }
+            };
+        }
+
+        // Start match buttons
+        document.querySelectorAll('.start-match-btn').forEach(btn => {
+            btn.onclick = async (e) => {
+                e.stopPropagation();
+                const matchCard = btn.closest('.match-card');
+                const matchId = matchCard?.dataset.matchId;
+                if (!matchId) return;
+
+                await startTournamentMatch(matchId);
+            };
+        });
+    }
+
+    /**
+     * Start a tournament match
+     */
+    async function startTournamentMatch(matchId) {
+        const result = Tournament.startMatch(currentTournament, matchId);
+        if (!result.success) {
+            UI.showToast(result.error, 'error');
+            return;
+        }
+
+        // Add tournament context to game
+        result.game.tournament_id = currentTournament.id;
+        result.game.tournament_match_id = matchId;
+
+        try {
+            await Storage.saveGame(result.game);
+            await Storage.updateTournamentMatch(matchId, {
+                status: 'in_progress',
+                game_id: result.game.id
+            });
+
+            currentGame = result.game;
+            Router.navigate('game', { gameId: result.game.id });
+        } catch (error) {
+            console.error('Error starting match:', error);
+            UI.showToast('Failed to start match', 'error');
+        }
+    }
+
+    /**
+     * Load new league page
+     */
+    function loadNewLeague() {
+        UI.showPage('new-league-page');
+        UI.renderNewLeagueForm();
+
+        // Setup form submission
+        const form = document.getElementById('new-league-form');
+        if (form) {
+            form.onsubmit = async (e) => {
+                e.preventDefault();
+                await createLeague();
+            };
+        }
+    }
+
+    /**
+     * Create new league
+     */
+    async function createLeague() {
+        const name = document.getElementById('league-name').value;
+        const gameType = parseInt(document.getElementById('league-game-type').value);
+        const matchesPerPairing = parseInt(document.getElementById('league-matches-per-pairing')?.value || '1');
+
+        const league = League.create({
+            name,
+            gameType,
+            matchesPerPairing,
+            winCondition: 'exact',
+            scoringMode: 'per-dart'
+        });
+
+        // Add players from form
+        const playerInputs = document.querySelectorAll('#league-player-names .player-name-input');
+        playerInputs.forEach(input => {
+            if (input.value.trim()) {
+                League.addParticipant(league, input.value.trim());
+            }
+        });
+
+        try {
+            await Storage.saveLeague(league);
+            currentLeague = league;
+            UI.showToast('League created!', 'success');
+            Router.navigate('league', { leagueId: league.id });
+        } catch (error) {
+            console.error('Error creating league:', error);
+            UI.showToast('Failed to create league', 'error');
+        }
+    }
+
+    /**
+     * Load league detail
+     */
+    async function loadLeague(leagueId) {
+        UI.showLoader('Loading league...');
+        try {
+            const league = await Storage.getLeague(leagueId);
+            if (!league) {
+                UI.showToast('League not found', 'error');
+                Router.navigate('competitions');
+                return;
+            }
+
+            currentLeague = league;
+            UI.showPage('league-page');
+            await UI.renderLeagueDetail(league);
+            setupLeagueDetailEvents();
+        } catch (error) {
+            console.error('Error loading league:', error);
+            UI.showToast('Failed to load league', 'error');
+        } finally {
+            UI.hideLoader();
+        }
+    }
+
+    /**
+     * Setup league detail page events
+     */
+    function setupLeagueDetailEvents() {
+        // Add participant button
+        const addBtn = document.getElementById('add-participant-btn');
+        if (addBtn) {
+            addBtn.onclick = async () => {
+                const nameInput = document.getElementById('new-participant-name');
+                const name = nameInput?.value.trim();
+                if (!name) {
+                    UI.showToast('Enter a player name', 'warning');
+                    return;
+                }
+
+                const result = League.addParticipant(currentLeague, name);
+                if (!result.success) {
+                    UI.showToast(result.error, 'error');
+                    return;
+                }
+
+                await Storage.saveLeagueParticipants(currentLeague.id, [result.participant]);
+                nameInput.value = '';
+                await UI.renderLeagueDetail(currentLeague);
+                setupLeagueDetailEvents();
+                UI.showToast(`${name} added!`, 'success');
+            };
+        }
+
+        // Remove participant buttons
+        document.querySelectorAll('.remove-participant-btn').forEach(btn => {
+            btn.onclick = async () => {
+                const name = btn.dataset.name;
+                League.removeParticipant(currentLeague, name);
+                await UI.renderLeagueDetail(currentLeague);
+                setupLeagueDetailEvents();
+            };
+        });
+
+        // Start league button
+        const startBtn = document.getElementById('start-league-btn');
+        if (startBtn) {
+            startBtn.onclick = async () => {
+                const result = League.generateFixtures(currentLeague);
+                if (!result.success) {
+                    UI.showToast(result.error, 'error');
+                    return;
+                }
+
+                try {
+                    await Storage.saveLeagueParticipants(currentLeague.id, currentLeague.participants);
+                    await Storage.saveLeagueMatches(currentLeague.id, currentLeague.matches);
+                    await Storage.updateLeague(currentLeague.id, { status: 'in_progress' });
+
+                    UI.showToast('League started!', 'success');
+                    await UI.renderLeagueDetail(currentLeague);
+                    setupLeagueDetailEvents();
+                } catch (error) {
+                    console.error('Error starting league:', error);
+                    UI.showToast('Failed to start league', 'error');
+                }
+            };
+        }
+
+        // Start match buttons
+        document.querySelectorAll('.start-match-btn').forEach(btn => {
+            btn.onclick = async (e) => {
+                e.stopPropagation();
+                const fixtureCard = btn.closest('.fixture-card');
+                const matchId = fixtureCard?.dataset.matchId;
+                if (!matchId) return;
+
+                await startLeagueMatch(matchId);
+            };
+        });
+    }
+
+    /**
+     * Start a league match
+     */
+    async function startLeagueMatch(matchId) {
+        const result = League.startMatch(currentLeague, matchId);
+        if (!result.success) {
+            UI.showToast(result.error, 'error');
+            return;
+        }
+
+        // Add league context to game
+        result.game.league_id = currentLeague.id;
+        result.game.league_match_id = matchId;
+
+        try {
+            await Storage.saveGame(result.game);
+            await Storage.updateLeagueMatch(matchId, {
+                status: 'in_progress',
+                game_id: result.game.id
+            });
+
+            currentGame = result.game;
+            Router.navigate('game', { gameId: result.game.id });
+        } catch (error) {
+            console.error('Error starting match:', error);
+            UI.showToast('Failed to start match', 'error');
+        }
+    }
+
+    /**
+     * Handle game completion for competitions
+     * Called when a competition game ends
+     */
+    async function handleCompetitionGameComplete(game, winner) {
+        if (game.tournament_id && game.tournament_match_id) {
+            // Tournament game
+            const tournament = await Storage.getTournament(game.tournament_id);
+            if (tournament) {
+                const winnerParticipant = tournament.participants.find(p => p.name === winner.name);
+                Tournament.recordMatchResult(tournament, game.tournament_match_id, winnerParticipant?.id, winner.name);
+
+                // Update database
+                await Storage.updateTournamentMatch(game.tournament_match_id, {
+                    status: 'completed',
+                    winner_name: winner.name
+                });
+
+                if (tournament.status === 'completed') {
+                    await Storage.updateTournament(tournament.id, {
+                        status: 'completed',
+                        winner_name: tournament.winner_name
+                    });
+                }
+
+                currentTournament = tournament;
+            }
+        } else if (game.league_id && game.league_match_id) {
+            // League game
+            const league = await Storage.getLeague(game.league_id);
+            if (league) {
+                const winnerParticipant = league.participants.find(p => p.name === winner.name);
+                League.recordMatchResult(league, game.league_match_id, winnerParticipant?.id, winner.name);
+
+                // Update database
+                await Storage.updateLeagueMatch(game.league_match_id, {
+                    status: 'completed',
+                    winner_name: winner.name
+                });
+
+                // Update participant standings
+                for (const p of league.participants) {
+                    const dbParticipant = league.participants.find(lp => lp.name === p.name);
+                    if (dbParticipant) {
+                        await Storage.updateLeagueParticipant(dbParticipant.id, p);
+                    }
+                }
+
+                if (league.status === 'completed') {
+                    await Storage.updateLeague(league.id, {
+                        status: 'completed',
+                        winner_name: league.winner_name
+                    });
+                }
+
+                currentLeague = league;
+            }
+        }
+    }
+
     // Public API
     return {
         init,
@@ -929,7 +1432,14 @@ const App = (() => {
         submitTurn,
         undoTurn,
         endGame,
-        shareGame
+        shareGame,
+        // Competition functions
+        loadCompetitions,
+        loadTournament,
+        loadLeague,
+        loadNewTournament,
+        loadNewLeague,
+        handleCompetitionGameComplete
     };
 })();
 

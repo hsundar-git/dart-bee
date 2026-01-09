@@ -49,6 +49,35 @@ const Router = (() => {
             return { route: 'new-game' };
         }
 
+        // Competition routes
+        if (pathParts[0] === 'competitions') {
+            return { route: 'competitions' };
+        }
+
+        if (pathParts[0] === 'tournament') {
+            if (pathParts[1] === 'new') {
+                return { route: 'new-tournament' };
+            }
+            if (pathParts[1] && pathParts[2] === 'match' && pathParts[3]) {
+                return { route: 'tournament-match', tournamentId: pathParts[1], matchId: pathParts[3] };
+            }
+            if (pathParts[1]) {
+                return { route: 'tournament', tournamentId: pathParts[1] };
+            }
+        }
+
+        if (pathParts[0] === 'league') {
+            if (pathParts[1] === 'new') {
+                return { route: 'new-league' };
+            }
+            if (pathParts[1] && pathParts[2] === 'match' && pathParts[3]) {
+                return { route: 'league-match', leagueId: pathParts[1], matchId: pathParts[3] };
+            }
+            if (pathParts[1]) {
+                return { route: 'league', leagueId: pathParts[1] };
+            }
+        }
+
         if (pathParts[0] === 'stats') {
             return { route: 'stats' };
         }
@@ -86,6 +115,28 @@ const Router = (() => {
                 break;
             case 'player-profile':
                 path = `#/leaderboard/player/${encodeURIComponent(params.playerName)}`;
+                break;
+            // Competition routes
+            case 'competitions':
+                path = '#/competitions';
+                break;
+            case 'new-tournament':
+                path = '#/tournament/new';
+                break;
+            case 'tournament':
+                path = `#/tournament/${params.tournamentId}`;
+                break;
+            case 'tournament-match':
+                path = `#/tournament/${params.tournamentId}/match/${params.matchId}`;
+                break;
+            case 'new-league':
+                path = '#/league/new';
+                break;
+            case 'league':
+                path = `#/league/${params.leagueId}`;
+                break;
+            case 'league-match':
+                path = `#/league/${params.leagueId}/match/${params.matchId}`;
                 break;
             case 'stats':
                 path = '#/stats';

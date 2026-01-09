@@ -29,9 +29,9 @@
     <link rel="stylesheet" href="styles/bee-theme.css?v=20260108.2241">
 
     <!-- Cache Control -->
-    <meta http-equiv=20260108.1505"Cache-Control" content="no-cache, no-store, must-revalidate">
-    <meta http-equiv=20260108.1505"Pragma" content="no-cache">
-    <meta http-equiv=20260108.1505"Expires" content="0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
 
     <!-- PWA & Icons -->
     <link rel="manifest" href="manifest.json">
@@ -77,6 +77,10 @@
                 <button class="nav-link" data-page="leaderboard" aria-label="Leaderboard">
                     <span class="icon">🏆</span>
                     <span class="label">Leaderboard</span>
+                </button>
+                <button class="nav-link" data-page="competitions" aria-label="Competitions">
+                    <span class="icon">🎯</span>
+                    <span class="label">Compete</span>
                 </button>
                 <button class="nav-link" data-page="stats" aria-label="Stats">
                     <span class="icon">📊</span>
@@ -426,6 +430,149 @@
                     <!-- Dynamically generated -->
                 </div>
             </div>
+
+            <!-- Competitions Hub Page -->
+            <div id="competitions-page" class="page">
+                <div class="page-header">
+                    <h1>Competitions</h1>
+                    <p>Create and manage tournaments and leagues</p>
+                </div>
+
+                <!-- Competition Tabs -->
+                <div class="competition-tabs">
+                    <button class="competition-tab-btn active" data-tab="tournaments">Tournaments</button>
+                    <button class="competition-tab-btn" data-tab="leagues">Leagues</button>
+                </div>
+
+                <!-- Create Buttons -->
+                <div class="competition-actions">
+                    <button class="btn btn-primary" onclick="Router.navigate('new-tournament')">+ New Tournament</button>
+                    <button class="btn btn-secondary" onclick="Router.navigate('new-league')">+ New League</button>
+                </div>
+
+                <!-- Competition List -->
+                <div id="competitions-content" class="competitions-list">
+                    <p class="placeholder">Loading competitions...</p>
+                </div>
+            </div>
+
+            <!-- New Tournament Page -->
+            <div id="new-tournament-page" class="page">
+                <div class="page-header">
+                    <button class="btn btn-secondary btn-small" onclick="Router.navigate('competitions')">← Back</button>
+                    <h1>Create Tournament</h1>
+                </div>
+
+                <form id="new-tournament-form" class="form-container">
+                    <div class="form-group">
+                        <label for="tournament-name">Tournament Name</label>
+                        <input type="text" id="tournament-name" placeholder="e.g., Summer Championship" required class="form-input">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tournament-format">Format</label>
+                        <select id="tournament-format" class="form-input">
+                            <option value="single_elimination">Single Elimination</option>
+                            <option value="double_elimination">Double Elimination</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tournament-size">Bracket Size</label>
+                        <select id="tournament-size" class="form-input">
+                            <option value="4">4 Players</option>
+                            <option value="8" selected>8 Players</option>
+                            <option value="16">16 Players</option>
+                            <option value="32">32 Players</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="tournament-game-type">Game Type</label>
+                        <select id="tournament-game-type" class="form-input">
+                            <option value="301">301</option>
+                            <option value="501" selected>501</option>
+                            <option value="701">701</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Players (Optional - can add later)</label>
+                        <div id="tournament-player-names" class="player-names-grid">
+                            <!-- Dynamically generated -->
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-large">Create Tournament</button>
+                </form>
+            </div>
+
+            <!-- Tournament Detail Page -->
+            <div id="tournament-page" class="page">
+                <div class="page-header">
+                    <button class="btn btn-secondary btn-small" onclick="Router.navigate('competitions')">← Back</button>
+                    <h1>Tournament</h1>
+                </div>
+
+                <div id="tournament-detail-content" class="tournament-detail">
+                    <!-- Dynamically generated -->
+                </div>
+            </div>
+
+            <!-- New League Page -->
+            <div id="new-league-page" class="page">
+                <div class="page-header">
+                    <button class="btn btn-secondary btn-small" onclick="Router.navigate('competitions')">← Back</button>
+                    <h1>Create League</h1>
+                </div>
+
+                <form id="new-league-form" class="form-container">
+                    <div class="form-group">
+                        <label for="league-name">League Name</label>
+                        <input type="text" id="league-name" placeholder="e.g., Weekly League" required class="form-input">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="league-game-type">Game Type</label>
+                        <select id="league-game-type" class="form-input">
+                            <option value="301">301</option>
+                            <option value="501" selected>501</option>
+                            <option value="701">701</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="league-matches-per-pairing">Matches per Pairing</label>
+                        <select id="league-matches-per-pairing" class="form-input">
+                            <option value="1" selected>Single (each pair plays once)</option>
+                            <option value="2">Double (each pair plays twice)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Add Players</label>
+                        <div id="league-player-names" class="player-names-grid">
+                            <input type="text" placeholder="Player 1" class="player-name-input form-input">
+                            <input type="text" placeholder="Player 2" class="player-name-input form-input">
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-small" id="add-league-player-btn" style="margin-top: 10px;">+ Add Player</button>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-large">Create League</button>
+                </form>
+            </div>
+
+            <!-- League Detail Page -->
+            <div id="league-page" class="page">
+                <div class="page-header">
+                    <button class="btn btn-secondary btn-small" onclick="Router.navigate('competitions')">← Back</button>
+                    <h1>League</h1>
+                </div>
+
+                <div id="league-detail-content" class="league-detail">
+                    <!-- Dynamically generated -->
+                </div>
+            </div>
         </main>
     </div>
 
@@ -448,24 +595,28 @@
 
     <!-- Scripts (load in specific order) -->
     <!-- 1. Device manager (must load first) -->
-    <script src="scripts/device.js?v=20260108.2241"></script>
+    <script src="scripts/device.js?v=20260109.1000"></script>
     <!-- 2. Supabase client initialization (must load before storage) -->
-    <script src="scripts/supabase-client.js?v=20260108.2241"></script>
+    <script src="scripts/supabase-client.js?v=20260109.1000"></script>
     <!-- 3. Storage layer (uses Supabase) -->
-    <script src="scripts/storage.js?v=20260108.2241"></script>
+    <script src="scripts/storage.js?v=20260109.1000"></script>
     <!-- 4. Game logic -->
-    <script src="scripts/game.js?v=20260108.2241"></script>
-    <!-- 5. Statistics -->
-    <script src="scripts/stats.js?v=20260108.2241"></script>
-    <!-- 6. Charts module -->
-    <script src="scripts/charts.js?v=20260108.2241"></script>
-    <!-- 7. Stats Widgets module -->
-    <script src="scripts/statsWidgets.js?v=20260108.2241"></script>
-    <!-- 8. Router for URL-based navigation -->
-    <script src="scripts/router.js?v=20260108.2241"></script>
-    <!-- 9. UI rendering -->
-    <script src="scripts/ui.js?v=20260108.2241"></script>
-    <!-- 10. Main app logic -->
-    <script src="scripts/app.js?v=20260108.2241"></script>
+    <script src="scripts/game.js?v=20260109.1000"></script>
+    <!-- 5. Tournament logic -->
+    <script src="scripts/tournament.js?v=20260109.1000"></script>
+    <!-- 6. League logic -->
+    <script src="scripts/league.js?v=20260109.1000"></script>
+    <!-- 7. Statistics -->
+    <script src="scripts/stats.js?v=20260109.1000"></script>
+    <!-- 8. Charts module -->
+    <script src="scripts/charts.js?v=20260109.1000"></script>
+    <!-- 9. Stats Widgets module -->
+    <script src="scripts/statsWidgets.js?v=20260109.1000"></script>
+    <!-- 10. Router for URL-based navigation -->
+    <script src="scripts/router.js?v=20260109.1000"></script>
+    <!-- 11. UI rendering -->
+    <script src="scripts/ui.js?v=20260109.1000"></script>
+    <!-- 12. Main app logic -->
+    <script src="scripts/app.js?v=20260109.1000"></script>
 </body>
 </html>
