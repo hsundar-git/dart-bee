@@ -1078,6 +1078,10 @@ const App = (() => {
 
                 await Storage.saveTournamentParticipants(currentTournament.id, [result.participant]);
                 nameInput.value = '';
+
+                // Reload tournament from database to get updated participants
+                currentTournament = await Storage.getTournament(currentTournament.id);
+
                 await UI.renderTournamentDetail(currentTournament);
                 setupTournamentDetailEvents();
                 UI.showToast(`${name} added!`, 'success');
@@ -1272,6 +1276,10 @@ const App = (() => {
 
                 await Storage.saveLeagueParticipants(currentLeague.id, [result.participant]);
                 nameInput.value = '';
+
+                // Reload league from database to get updated participants
+                currentLeague = await Storage.getLeague(currentLeague.id);
+
                 await UI.renderLeagueDetail(currentLeague);
                 setupLeagueDetailEvents();
                 UI.showToast(`${name} added!`, 'success');
