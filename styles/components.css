@@ -131,6 +131,8 @@
     flex-direction: column;
     gap: var(--spacing-xs);
     align-items: center;
+    width: 100%;
+    min-width: 0;
 }
 
 .stat-value {
@@ -138,6 +140,10 @@
     font-weight: var(--font-weight-bold);
     color: var(--color-primary);
     line-height: 1;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .stat-label {
@@ -146,6 +152,10 @@
     font-weight: var(--font-weight-medium);
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* ============================
