@@ -372,7 +372,7 @@ const Charts = (() => {
             'wins': 'Total Wins',
             'win-rate': 'Win Rate (%)',
             'avg-turn': 'Avg per Turn',
-            '180s': 'Total 180s'
+            '100s': 'Total 100+'
         };
 
         const options = getDefaultOptions('bar');
@@ -434,7 +434,7 @@ const Charts = (() => {
         const data = [
             normalizeValue(parseFloat(stats.winRate) || 0, 100),
             normalizeValue(parseFloat(stats.avgPerTurn || stats.avgPerDart) || 0, 60),
-            normalizeValue(stats.total180s || 0, 20),
+            normalizeValue(stats.total100s || 0, 20),
             normalizeValue(stats.maxTurn || 0, 180),
             normalizeValue(parseFloat(stats.checkoutPercentage) || 0, 100)
         ];
@@ -450,11 +450,11 @@ const Charts = (() => {
                     backgroundColor: COLORS.primaryDark,
                     callbacks: {
                         label: function(context) {
-                            const labels = ['Win Rate', 'Avg/Turn', '180s', 'Max Turn', 'Checkout %'];
+                            const labels = ['Win Rate', 'Avg/Turn', '100+', 'Max Turn', 'Checkout %'];
                             const rawValues = [
                                 `${stats.winRate}%`,
                                 stats.avgPerTurn || stats.avgPerDart,
-                                stats.total180s,
+                                stats.total100s,
                                 stats.maxTurn,
                                 `${stats.checkoutPercentage}%`
                             ];
@@ -487,7 +487,7 @@ const Charts = (() => {
         chartInstances[canvasId] = new Chart(ctx, {
             type: 'radar',
             data: {
-                labels: ['Win Rate', 'Avg/Turn', '180s', 'Max Turn', 'Checkout %'],
+                labels: ['Win Rate', 'Avg/Turn', '100+', 'Max Turn', 'Checkout %'],
                 datasets: [{
                     data: data,
                     backgroundColor: 'rgba(125, 95, 146, 0.2)',

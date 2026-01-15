@@ -47,6 +47,15 @@
     <script src="scripts/config.js?v=20260110.1110"></script>
 </head>
 <body class="honeycomb-bg">
+     <!-- Splash Screen -->
+    <div id="splash-screen" class="splash-screen">
+        <div class="splash-content">
+            <img src="img.png" alt="Dart Bee Logo" class="splash-logo">
+            <h1 class="splash-title">Dart Bee</h1>
+            <div class="splash-tagline">Ready. Aim. Score!</div>
+        </div>
+    </div>
+
     <!-- Ambient Bee Decorations -->
     <div class="ambient-bees">
         <div class="ambient-bee">🐝</div>
@@ -58,7 +67,7 @@
         <!-- Navigation Bar -->
         <nav class="navbar">
             <div class="navbar-brand">
-                <span class="bee-icon">🐝</span>
+                <img src="img.png" alt="Dart Bee" class="navbar-logo">
                 <span class="app-title">Dart Bee</span>
             </div>
             <div class="navbar-nav">
@@ -360,6 +369,7 @@
                     <button class="tab-btn active" data-tab="wins">Most Wins</button>
                     <button class="tab-btn" data-tab="win-rate">Best Win Rate</button>
                     <button class="tab-btn" data-tab="avg-turn">Avg Per Turn</button>
+                    <button class="tab-btn" data-tab="100s">Most 100+</button>
                     <button class="tab-btn" data-tab="max-turn">Top Turn</button>
                 </div>
 
@@ -589,7 +599,7 @@
                 </div>
             </div>
         </main>
-    </div>
+</div>
 
     <!-- Toast Notifications -->
     <div id="toast-container" class="toast-container"></div>

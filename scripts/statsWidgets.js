@@ -22,10 +22,10 @@ const StatsWidgets = (() => {
         winStreak: { id: 'winStreak', name: 'Hot Streak', icon: '🔥', description: 'Achieve 60%+ win rate', check: (s) => parseFloat(s.winRate) >= 60 },
         dominant: { id: 'dominant', name: 'Dominant', icon: '💪', description: 'Achieve 75%+ win rate', check: (s) => parseFloat(s.winRate) >= 75 },
 
-        // 180 achievements
-        first180: { id: 'first180', name: 'Perfect!', icon: '🎯', description: 'Score your first 180', check: (s) => s.total180s >= 1 },
-        five180s: { id: 'five180s', name: 'Sharpshooter', icon: '🎪', description: 'Score 5 180s', check: (s) => s.total180s >= 5 },
-        twenty180s: { id: 'twenty180s', name: 'Triple Master', icon: '🌟', description: 'Score 20 180s', check: (s) => s.total180s >= 20 },
+        // 100+ achievements
+        first100: { id: 'first100', name: 'Century!', icon: '🎯', description: 'Score your first 100+', check: (s) => s.total100s >= 1 },
+        five100s: { id: 'five100s', name: 'Sharpshooter', icon: '🎪', description: 'Score 5 100+ turns', check: (s) => s.total100s >= 5 },
+        twenty100s: { id: 'twenty100s', name: 'Century Master', icon: '🌟', description: 'Score 20 100+ turns', check: (s) => s.total100s >= 20 },
 
         // High score achievements
         bigTurn: { id: 'bigTurn', name: 'Big Scorer', icon: '📈', description: 'Score 140+ in a turn', check: (s) => s.maxTurn >= 140 },
@@ -47,7 +47,7 @@ const StatsWidgets = (() => {
         widgetOrder: ['achievements', 'progressRings', 'streaks', 'heatmap'],
         goals: {
             targetWinRate: 50,
-            target180s: 10,
+            target100s: 10,
             targetGames: 50,
             targetAvgPerDart: 40
         }
@@ -247,9 +247,9 @@ const StatsWidgets = (() => {
                 color: '#2de36d'
             },
             {
-                label: '180s Goal',
-                value: stats.total180s || 0,
-                max: goals.target180s,
+                label: '100s Goal',
+                value: stats.total100s || 0,
+                max: goals.target100s,
                 color: '#7d5f92'
             },
             {
@@ -498,8 +498,8 @@ const StatsWidgets = (() => {
                             <input type="number" id="goal-winRate" value="${currentPrefs.goals.targetWinRate}" min="1" max="100">
                         </label>
                         <label class="setting-input">
-                            <span>Target 180s</span>
-                            <input type="number" id="goal-180s" value="${currentPrefs.goals.target180s}" min="1" max="1000">
+                             <span>Target 100+ Turns</span>
+                            <input type="number" id="goal-100s" value="${currentPrefs.goals.target100s}" min="1" max="1000">
                         </label>
                         <label class="setting-input">
                             <span>Target Games</span>
@@ -562,7 +562,7 @@ const StatsWidgets = (() => {
             widgetOrder: ['achievements', 'progressRings', 'streaks', 'heatmap'],
             goals: {
                 targetWinRate: parseInt(document.getElementById('goal-winRate')?.value) || 50,
-                target180s: parseInt(document.getElementById('goal-180s')?.value) || 10,
+                target100s: parseInt(document.getElementById('goal-100s')?.value) || 10,
                 targetGames: parseInt(document.getElementById('goal-games')?.value) || 50,
                 targetAvgPerDart: parseInt(document.getElementById('goal-avgDart')?.value) || 40
             }
@@ -590,7 +590,7 @@ const StatsWidgets = (() => {
             { label: 'Wins', key: 'gamesWon', format: v => v },
             { label: 'Win Rate', key: 'winRate', format: v => v + '%' },
             { label: 'Avg/Turn', key: 'avgPerTurn', format: v => v || stats1.avgPerDart || stats2.avgPerDart },
-            { label: 'Total 180s', key: 'total180s', format: v => v },
+            { label: 'Total 100+', key: 'total100s', format: v => v },
             { label: 'Max Turn', key: 'maxTurn', format: v => v },
             { label: 'Checkout %', key: 'checkoutPercentage', format: v => v + '%' }
         ];
@@ -639,7 +639,7 @@ const StatsWidgets = (() => {
         const data1 = [
             normalizeValue(parseFloat(stats1.winRate) || 0, 100),
             normalizeValue(parseFloat(stats1.avgPerTurn || stats1.avgPerDart) || 0, 60),
-            normalizeValue(stats1.total180s || 0, 20),
+            normalizeValue(stats1.total100s || 0, 20),
             normalizeValue(stats1.maxTurn || 0, 180),
             normalizeValue(parseFloat(stats1.checkoutPercentage) || 0, 100)
         ];
@@ -647,7 +647,7 @@ const StatsWidgets = (() => {
         const data2 = [
             normalizeValue(parseFloat(stats2.winRate) || 0, 100),
             normalizeValue(parseFloat(stats2.avgPerTurn || stats2.avgPerDart) || 0, 60),
-            normalizeValue(stats2.total180s || 0, 20),
+            normalizeValue(stats2.total100s || 0, 20),
             normalizeValue(stats2.maxTurn || 0, 180),
             normalizeValue(parseFloat(stats2.checkoutPercentage) || 0, 100)
         ];
@@ -655,7 +655,7 @@ const StatsWidgets = (() => {
         const chart = new Chart(ctx, {
             type: 'radar',
             data: {
-                labels: ['Win Rate', 'Avg/Turn', '180s', 'Max Turn', 'Checkout %'],
+                labels: ['Win Rate', 'Avg/Turn', '100+', 'Max Turn', 'Checkout %'],
                 datasets: [
                     {
                         label: name1,

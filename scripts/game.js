@@ -237,8 +237,31 @@ const Game = (() => {
                 game.current_player_index = nextActiveIndex;
             }
 
-            // Calculate rank for this player based on finish round
-            const finishRank = calculateCurrentRank(game, currentPlayer.finish_round);
+            // Check if only 1 player remains and the round is complete
+            // A round is complete when current_turn is a multiple of player count
+            if (activePlayersRemaining === 1) {
+                const currentRound = Math.floor((game.current_turn - 1) / game.players.length);
+                const roundComplete = (game.current_turn % game.players.length) === 0;
+
+                // If round just completed and only 1 player remains, they're the loser
+                if (roundComplete) {
+                    console.log(`Round ${currentRound} complete with 1 player remaining - ending game`);
+                    assignRankingsByFinishTurn(game);
+                    endGame(game);
+                    const finalRankings = getRankings(game);
+
+                    return {
+                        success: true,
+                        gameEnded: true,
+                        playerFinished: currentPlayer.name,
+                        finishRank: currentPlayer.finish_rank,
+                        finalRankings: finalRankings
+                    };
+                }
+            }
+
+            // Calculate rank for this player based on finish round and average
+            const finishRank = calculateCurrentRank(game, currentPlayer);
 
             // IMPORTANT: Assign the rank to the player object so it's persisted to DB
             currentPlayer.finish_rank = finishRank;
@@ -272,25 +295,22 @@ const Game = (() => {
         // If so, they've had their chance in this round - end the game
         const activePlayers = game.players.filter(p => !p.winner);
         if (activePlayers.length === 1) {
-            // Get the highest finish_round from finished players
-            const finishedPlayers = game.players.filter(p => p.finish_round != null);
-            if (finishedPlayers.length > 0) {
-                const maxFinishRound = Math.max(...finishedPlayers.map(p => p.finish_round));
-                const currentRound = Math.floor((game.current_turn - 1) / game.players.length);
+            // Check if the round is complete (all players have had their turn)
+            const roundComplete = (game.current_turn % game.players.length) === 0;
+            const currentRound = Math.floor((game.current_turn - 1) / game.players.length);
 
-                // If current player has had their turn in the round where others finished, end game
-                if (currentRound >= maxFinishRound) {
-                    // Last player didn't finish but had their chance
-                    assignRankingsByFinishTurn(game);
-                    endGame(game);
-                    const finalRankings = getRankings(game);
+            // End game if round is complete - last player is the loser
+            if (roundComplete) {
+                console.log(`Round ${currentRound} complete with 1 player remaining (didn't finish) - ending game`);
+                assignRankingsByFinishTurn(game);
+                endGame(game);
+                const finalRankings = getRankings(game);
 
-                    return {
-                        success: true,
-                        gameEnded: true,
-                        finalRankings: finalRankings
-                    };
-                }
+                return {
+                    success: true,
+                    gameEnded: true,
+                    finalRankings: finalRankings
+                };
             }
         }
 
@@ -502,58 +522,56 @@ const Game = (() => {
      */
     /**
      * Assign rankings based on finish round
-     * Players finishing in same round get same rank
+     * Players finishing in same round are ranked by average (higher avg = better rank)
      * Last player (who didn't finish) gets last rank
      */
     function assignRankingsByFinishTurn(game) {
         console.log('=== assignRankingsByFinishTurn DEBUG ===');
         console.log('All players:');
         game.players.forEach((p, i) => {
-            console.log(`  [${i}] ${p.name}: score=${p.currentScore}, winner=${p.winner}, finish_round=${p.finish_round}, darts=${p.stats?.totalDarts}`);
+            console.log(`  [${i}] ${p.name}: score=${p.currentScore}, winner=${p.winner}, finish_round=${p.finish_round}, darts=${p.stats?.totalDarts}, avgPerDart=${p.stats?.avgPerDart}`);
         });
 
-        // Get all finished players with their finish rounds and turns
+        // Get all finished players with their finish rounds and stats
         const finishedPlayers = game.players
             .filter(p => p.finish_round != null)
             .map(p => ({
                 player: p,
                 finishRound: p.finish_round,
                 totalTurns: p.turns.length,
-                totalDarts: p.stats?.totalDarts || 0
+                totalDarts: p.stats?.totalDarts || 0,
+                avgPerDart: p.stats?.avgPerDart || 0
             }));
 
-        console.log('Finished players:', finishedPlayers.map(fp => `${fp.player.name}:round${fp.finishRound}:${fp.totalTurns}turns:${fp.totalDarts}darts`).join(', '));
+        console.log('Finished players:', finishedPlayers.map(fp => `${fp.player.name}:round${fp.finishRound}:avg${fp.avgPerDart.toFixed(2)}`).join(', '));
 
-        // Sort by finish round (ascending) - players in same round will be grouped
-        finishedPlayers.sort((a, b) => a.finishRound - b.finishRound);
-        console.log('After sort:', finishedPlayers.map(fp => `${fp.player.name}:round${fp.finishRound}`).join(', '));
-
-        // Assign ranks with ties - players finishing in same round get same rank
-        let currentRank = 1;
-        let lastFinishRound = -1;
-        let playersAtCurrentRank = 0;
-
-        finishedPlayers.forEach(({ player, finishRound }) => {
-            if (finishRound !== lastFinishRound) {
-                // New finish round - advance rank by number of players at previous rank
-                currentRank += playersAtCurrentRank;
-                playersAtCurrentRank = 0;
-                lastFinishRound = finishRound;
+        // Sort by finish round (ascending), then by average per dart (descending - higher avg = better)
+        // Higher average means player was more efficient, so they rank higher (lower rank number)
+        finishedPlayers.sort((a, b) => {
+            if (a.finishRound !== b.finishRound) {
+                return a.finishRound - b.finishRound;
             }
-            player.finish_rank = currentRank;
-            playersAtCurrentRank++;
-            console.log(`  Assigned ${player.name} rank ${currentRank} (round ${finishRound})`);
+            // Same round: higher average = better rank (sort descending)
+            return b.avgPerDart - a.avgPerDart;
+        });
+        console.log('After sort:', finishedPlayers.map(fp => `${fp.player.name}:round${fp.finishRound}:avg${fp.avgPerDart.toFixed(2)}`).join(', '));
+
+        // Assign sequential ranks - each player gets unique rank based on round + average
+        finishedPlayers.forEach(({ player }, index) => {
+            player.finish_rank = index + 1;
+            console.log(`  Assigned ${player.name} rank ${index + 1} (round ${player.finish_round}, avg ${player.stats?.avgPerDart?.toFixed(2)})`);
         });
 
         // Assign rank to any unfinished players (they get ranks after finished players)
         const unfinishedPlayers = game.players
             .filter(p => p.finish_round == null)
             .sort((a, b) => {
-                // Sort unfinished by score (lower = better) then by darts (fewer = better)
+                // Sort unfinished by score (lower = better) then by average (higher = better)
                 if (a.currentScore !== b.currentScore) {
                     return a.currentScore - b.currentScore;
                 }
-                return (a.stats?.totalDarts || 0) - (b.stats?.totalDarts || 0);
+                // Higher average is better, so sort descending
+                return (b.stats?.avgPerDart || 0) - (a.stats?.avgPerDart || 0);
             });
 
         console.log('Unfinished players:', unfinishedPlayers.map(p => p.name).join(', ') || 'NONE');
@@ -565,7 +583,7 @@ const Game = (() => {
 
         console.log('Final rankings:');
         game.players.forEach((p, i) => {
-            console.log(`  [${i}] ${p.name}: finish_rank=${p.finish_rank}`);
+            console.log(`  [${i}] ${p.name}: finish_rank=${p.finish_rank}, avgPerDart=${p.stats?.avgPerDart?.toFixed(2)}`);
         });
     }
 
@@ -575,18 +593,27 @@ const Game = (() => {
     }
 
     /**
-     * Calculate the current rank of a player based on their finish_round
+     * Calculate the current rank of a player based on their finish_round and average
+     * Players in earlier rounds rank higher, within same round higher average ranks better
      */
-    function calculateCurrentRank(game, playerFinishRound) {
-        const finishedPlayers = game.players
-            .filter(p => p.finish_round !== undefined && p.finish_round < playerFinishRound)
-            .map(p => p.finish_round);
+    function calculateCurrentRank(game, player) {
+        const playerFinishRound = player.finish_round;
+        const currentAvg = player.stats?.avgPerDart || 0;
 
-        // Get unique finish rounds that came before this player
-        const uniqueEarlierRounds = [...new Set(finishedPlayers)].sort((a, b) => a - b);
+        // Count players who finished in earlier rounds
+        const playersInEarlierRounds = game.players.filter(
+            p => p.finish_round !== undefined && p.finish_round < playerFinishRound
+        ).length;
 
-        // Rank is 1 + number of unique earlier finish rounds
-        return uniqueEarlierRounds.length + 1;
+        // Count players in the same round with higher average (they rank better)
+        const playersInSameRoundWithHigherAvg = game.players.filter(
+            p => p.finish_round === playerFinishRound &&
+                 p !== player &&
+                 (p.stats?.avgPerDart || 0) > currentAvg
+        ).length;
+
+        // Rank = players before + players in same round with better avg + 1
+        return playersInEarlierRounds + playersInSameRoundWithHigherAvg + 1;
     }
 
     /**

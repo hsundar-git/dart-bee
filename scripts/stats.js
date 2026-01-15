@@ -49,7 +49,7 @@ const Stats = (() => {
             avgPerTurn: player.avg_per_turn ? parseFloat(player.avg_per_turn).toFixed(2) : '0.00',
             maxDart: player.max_dart_score || 0,
             maxTurn: player.max_turn_score || 0,
-            total180s: player.total_180s || 0,
+            total100s: player.total_100s || 0,
             total140plus: player.total_140_plus || 0,
             bestCheckout: player.best_checkout || 0,
             checkoutPercentage: player.checkout_percentage
@@ -140,6 +140,7 @@ const Stats = (() => {
             'wins': { column: 'rank_by_wins', ascending: true },
             'win-rate': { column: 'rank_by_win_rate', ascending: true },
             'avg-turn': { column: 'rank_by_avg', ascending: true },
+            '100s': { column: 'total_180s', ascending: false },  // DB column is still total_180s, displayed as 100+
             'max-turn': { column: 'max_turn_score', ascending: false }  // Sort by value descending
         }[metric] || { column: 'rank_by_wins', ascending: true };
 
@@ -166,7 +167,7 @@ const Stats = (() => {
                     gamesWon: player.total_games_won,
                     winRate: parseFloat(player.win_rate || 0).toFixed(1),
                     totalDarts: player.total_darts_thrown,
-                    total180s: player.total_180s,
+                    total100s: player.total_180s || 0,  // DB column is total_180s, displayed as 100+
                     avgPerDart: parseFloat(player.avg_per_dart || 0).toFixed(2),
                     avgPerTurn: parseFloat(player.avg_per_turn || 0).toFixed(2),
                     maxTurn: player.max_turn_score || 0
@@ -181,7 +182,7 @@ const Stats = (() => {
                     avgPerTurn: parseFloat(player.avg_per_turn || 0).toFixed(2),
                     maxDart: player.max_dart_score,
                     maxTurn: player.max_turn_score,
-                    total180s: player.total_180s,
+                    total100s: player.total_180s || 0,  // DB column is total_180s, displayed as 100+
                     total140plus: player.total_140_plus,
                     bestCheckout: player.best_checkout,
                     checkoutPercentage: parseFloat(player.checkout_percentage || 0).toFixed(1)
@@ -234,7 +235,7 @@ const Stats = (() => {
                         totalDarts: 0,
                         totalScore: 0,
                         totalTurns: 0,
-                        total180s: 0,
+                        total100s: 0,
                         maxTurn: 0
                     };
                 }
@@ -245,7 +246,7 @@ const Stats = (() => {
                 stats.totalDarts += gp.total_darts || 0;
                 stats.totalScore += gp.total_score || 0;
                 stats.totalTurns += gp.total_turns || 0;
-                stats.total180s += gp.count_180s || 0;
+                stats.total100s += gp.count_180s || 0;
                 stats.maxTurn = Math.max(stats.maxTurn, gp.max_turn || 0);
             });
         });
@@ -264,7 +265,7 @@ const Stats = (() => {
                 gamesWon: stats.gamesWon,
                 winRate: winRate,
                 totalDarts: stats.totalDarts,
-                total180s: stats.total180s,
+                total100s: stats.total100s,
                 avgPerDart: avgPerDart,
                 avgPerTurn: stats.totalTurns > 0 ? (stats.totalScore / stats.totalTurns).toFixed(2) : '0.00',
                 maxTurn: stats.maxTurn
@@ -298,7 +299,7 @@ const Stats = (() => {
             gamesWon: 0,
             winRate: 0,
             totalDarts: 0,
-            total180s: 0,
+            total100s: 0,
             avgPerDart: 0
         };
 
@@ -320,8 +321,8 @@ const Stats = (() => {
 
             (player.turns || []).forEach(turn => {
                 const turnTotal = turn.darts.reduce((a, b) => a + b, 0);
-                if (turnTotal === 180) {
-                    stats.total180s++;
+                if (turnTotal >= 100) {
+                    stats.total100s++;
                 }
             });
         });
@@ -365,6 +366,8 @@ const Stats = (() => {
                 return parseFloat(stats.winRate || stats.win_rate || 0);
             case 'avg-turn':
                 return parseFloat(stats.avgPerTurn || stats.avg_per_turn || stats.avgPerDart || stats.avg_per_dart || 0);
+            case '100s':
+                return stats.total100s || stats.total_180s || 0;  // DB column is total_180s
             case 'max-turn':
                 return stats.maxTurn || stats.max_turn_score || stats.max_turn || 0;
             default:
@@ -603,7 +606,7 @@ const Stats = (() => {
                 // Get sum totals
                 getSupabaseClient()
                     .from('players')
-                    .select('total_darts_thrown, total_score, total_180s, total_140_plus, total_games_played, total_games_won')
+                    .select('total_darts_thrown, total_score, total_100s, total_140_plus, total_games_played, total_games_won')
             ]);
 
             // Calculate aggregated totals
@@ -612,21 +615,21 @@ const Stats = (() => {
 
             let totalDarts = 0;
             let totalScore = 0;
-            let total180s = 0;
+            let total100s = 0;
             let total140plus = 0;
             let totalGames = 0;
             let totalWins = 0;
             let highestAvg = 0;
             let highestAvgPlayer = '';
-            let most180s = 0;
-            let most180sPlayer = '';
+            let most100s = 0;
+            let most100sPlayer = '';
             let highestMaxTurn = 0;
             let highestMaxTurnPlayer = '';
 
             players.forEach(p => {
                 totalDarts += p.total_darts_thrown || 0;
                 totalScore += p.total_score || 0;
-                total180s += p.total_180s || 0;
+                total100s += p.total_100s || 0;
                 total140plus += p.total_140_plus || 0;
                 totalGames += p.total_games_played || 0;
                 totalWins += p.total_games_won || 0;
@@ -637,9 +640,9 @@ const Stats = (() => {
                     highestAvgPlayer = p.name;
                 }
 
-                if ((p.total_180s || 0) > most180s) {
-                    most180s = p.total_180s || 0;
-                    most180sPlayer = p.name;
+                if ((p.total_100s || 0) > most100s) {
+                    most100s = p.total_100s || 0;
+                    most100sPlayer = p.name;
                 }
 
                 if ((p.max_turn_score || 0) > highestMaxTurn) {
@@ -653,14 +656,14 @@ const Stats = (() => {
                 totalPlayers: players.length,
                 totalDarts,
                 totalScore,
-                total180s,
+                total100s,
                 total140plus,
                 averagePerDart: totalDarts > 0 ? (totalScore / totalDarts).toFixed(2) : '0.00',
                 records: {
                     highestAvg: highestAvg.toFixed(2),
                     highestAvgPlayer,
-                    most180s,
-                    most180sPlayer,
+                    most100s,
+                    most100sPlayer,
                     highestMaxTurn,
                     highestMaxTurnPlayer
                 },
@@ -678,7 +681,7 @@ const Stats = (() => {
                 totalPlayers: 0,
                 totalDarts: 0,
                 totalScore: 0,
-                total180s: 0,
+                total100s: 0,
                 total140plus: 0,
                 averagePerDart: '0.00',
                 records: {},
@@ -720,7 +723,7 @@ const Stats = (() => {
             avgPerTurn: '0.00',
             maxDart: 0,
             maxTurn: 0,
-            total180s: 0,
+            total100s: 0,
             total140plus: 0,
             bestCheckout: 0,
             checkoutPercentage: '0.0',
