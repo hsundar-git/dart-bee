@@ -212,13 +212,42 @@ const Storage = (() => {
     }
 
     /**
+     * Calculate the current player index from turn data
+     * Finds the active player (not finished) with the fewest turns
+     */
+    function calculateCurrentPlayerIndex(sortedGamePlayers, players) {
+        // Find active players (those who haven't finished)
+        const activePlayers = sortedGamePlayers
+            .map((gp, index) => ({
+                index,
+                turnCount: gp.total_turns || (gp.turns ? gp.turns.length : 0),
+                isFinished: gp.is_winner || gp.finish_rank != null
+            }))
+            .filter(p => !p.isFinished);
+
+        // If no active players (game complete), return 0
+        if (activePlayers.length === 0) {
+            return 0;
+        }
+
+        // Find the minimum turn count among active players
+        const minTurns = Math.min(...activePlayers.map(p => p.turnCount));
+
+        // Find the first active player (by player_order) with the minimum turns
+        const nextPlayer = activePlayers.find(p => p.turnCount === minTurns);
+
+        return nextPlayer ? nextPlayer.index : 0;
+    }
+
+    /**
      * Transform game from new DB format to old format for compatibility
      */
     function transformGameFromDB(dbGame) {
         // Reconstruct players array from game_players
-        const players = (dbGame.game_players || [])
-            .sort((a, b) => a.player_order - b.player_order)
-            .map(gp => ({
+        const sortedGamePlayers = (dbGame.game_players || [])
+            .sort((a, b) => a.player_order - b.player_order);
+
+        const players = sortedGamePlayers.map(gp => ({
                 id: gp.id,
                 name: gp.player?.name || 'Unknown',
                 startingScore: gp.starting_score,
@@ -238,6 +267,9 @@ const Storage = (() => {
                 }
             }));
 
+        // Calculate correct current_player_index from turn data
+        const currentPlayerIndex = calculateCurrentPlayerIndex(sortedGamePlayers, players);
+
         return {
             id: dbGame.id,
             created_at: dbGame.created_at,
@@ -245,7 +277,7 @@ const Storage = (() => {
             game_type: dbGame.game_type,
             win_condition: dbGame.win_condition,
             scoring_mode: dbGame.scoring_mode,
-            current_player_index: 0, // Not stored in new schema
+            current_player_index: currentPlayerIndex,
             current_turn: dbGame.current_turn,
             is_active: dbGame.is_active,
             device_id: dbGame.device_id,
@@ -303,7 +335,7 @@ const Storage = (() => {
                 total_score: p.stats.totalScore,
                 max_dart: p.stats.maxDart,
                 max_turn: p.stats.maxTurn,
-                count_180s: countScoresInTurns(p.turns, 180),
+                count_180s: countScoresInRange(p.turns, 100, 180),  // DB column is count_180s, but now counts 100+ scores
                 count_140_plus: countScoresInRange(p.turns, 140, 179),
                 checkout_attempts: p.stats.checkoutAttempts || 0,
                 checkout_successes: p.stats.checkoutSuccess || 0
@@ -609,9 +641,10 @@ const Storage = (() => {
      * Transform game with full turn history
      */
     function transformGameWithTurns(dbGame) {
-        const players = (dbGame.game_players || [])
-            .sort((a, b) => a.player_order - b.player_order)
-            .map(gp => {
+        const sortedGamePlayers = (dbGame.game_players || [])
+            .sort((a, b) => a.player_order - b.player_order);
+
+        const players = sortedGamePlayers.map(gp => {
                 const turns = (gp.turns || [])
                     .sort((a, b) => a.turn_number - b.turn_number)
                     .map(t => ({
@@ -642,6 +675,9 @@ const Storage = (() => {
                 };
             });
 
+        // Calculate correct current_player_index from turn data
+        const currentPlayerIndex = calculateCurrentPlayerIndex(sortedGamePlayers, players);
+
         return {
             id: dbGame.id,
             created_at: dbGame.created_at,
@@ -649,7 +685,7 @@ const Storage = (() => {
             game_type: dbGame.game_type,
             win_condition: dbGame.win_condition,
             scoring_mode: dbGame.scoring_mode,
-            current_player_index: 0,
+            current_player_index: currentPlayerIndex,
             current_turn: dbGame.current_turn,
             is_active: dbGame.is_active,
             device_id: dbGame.device_id,

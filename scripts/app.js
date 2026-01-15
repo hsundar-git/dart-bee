@@ -1486,6 +1486,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Initialize router with route change handler
     Router.init(App.handleRoute);
 
+    // Hide splash screen after animation completes
+    const splashScreen = document.getElementById('splash-screen');
+    if (splashScreen) {
+        setTimeout(() => {
+            splashScreen.classList.add('hidden');
+            // Remove from DOM after transition
+            setTimeout(() => {
+                splashScreen.remove();
+            }, 500);
+        }, 2500); // Show splash for 2.5 seconds
+    }
+
     // Periodic auto-save for current game
     setInterval(async () => {
         if (window.currentGame) {

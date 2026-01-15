@@ -978,6 +978,7 @@ const UI = (() => {
             'wins': 'Wins',
             'win-rate': 'Win Rate',
             'avg-turn': 'Avg/Turn',
+            '100s': '100+ Turns',
             'max-turn': 'Top Turn'
         }[metric] || 'Wins';
 
@@ -1005,6 +1006,9 @@ const UI = (() => {
                     break;
                 case 'avg-turn':
                     metricDisplay = entry.stats.avgPerTurn || entry.stats.avgPerDart || '0.00';
+                    break;
+                case '100s':
+                    metricDisplay = entry.stats.total100s || entry.fullStats?.total100s || 0;
                     break;
                 case 'max-turn':
                     metricDisplay = entry.stats.maxTurn || entry.fullStats?.maxTurn || 0;
@@ -1132,8 +1136,8 @@ const UI = (() => {
                         <div class="stat-box-value">${stats.maxTurn}</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-box-label">180s</div>
-                        <div class="stat-box-value">${stats.total180s}</div>
+                        <div class="stat-box-label">100+ Turns</div>
+                        <div class="stat-box-value">${stats.total100s}</div>
                     </div>
                 </div>
             </div>
@@ -1587,8 +1591,8 @@ const UI = (() => {
                 <div class="global-stat-card highlight">
                     <div class="global-stat-icon">🔥</div>
                     <div class="global-stat-content">
-                        <div class="global-stat-value" id="counter-180s">${globalStats.total180s}</div>
-                        <div class="global-stat-label">Total 180s</div>
+                        <div class="global-stat-value" id="counter-100s">${globalStats.total100s}</div>
+                        <div class="global-stat-label">Total 100+</div>
                     </div>
                 </div>
                 <div class="global-stat-card">
@@ -1615,9 +1619,9 @@ const UI = (() => {
                     <div class="record-card">
                         <div class="record-icon">🎯</div>
                         <div class="record-content">
-                            <div class="record-value">${globalStats.records.most180s || 0}</div>
-                            <div class="record-label">Most 180s</div>
-                            <div class="record-holder">${globalStats.records.most180sPlayer || 'N/A'}</div>
+                            <div class="record-value">${globalStats.records.most100s || 0}</div>
+                            <div class="record-label">Most 100+</div>
+                            <div class="record-holder">${globalStats.records.most100sPlayer || 'N/A'}</div>
                         </div>
                     </div>
                     <div class="record-card">
@@ -1644,8 +1648,8 @@ const UI = (() => {
                         <span class="fun-fact-label">Avg Darts per Game</span>
                     </div>
                     <div class="fun-fact">
-                        <span class="fun-fact-value">${globalStats.totalGames > 0 ? (globalStats.total180s / globalStats.totalGames).toFixed(2) : 0}</span>
-                        <span class="fun-fact-label">180s per Game</span>
+                        <span class="fun-fact-value">${globalStats.totalGames > 0 ? (globalStats.total100s / globalStats.totalGames).toFixed(2) : 0}</span>
+                        <span class="fun-fact-label">100+ per Game</span>
                     </div>
                 </div>
             </div>
