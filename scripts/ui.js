@@ -2030,9 +2030,33 @@ const UI = (() => {
                     </div>
                 </div>
                 ${tournament.status === 'completed' ? `
-                    <div class="tournament-winner">
-                        <span class="winner-label">Champion</span>
-                        <span class="winner-name">${tournament.winner_name}</span>
+                    <div class="tournament-winner-celebration">
+                        <div class="confetti-container">
+                            <div class="confetti"></div>
+                            <div class="confetti"></div>
+                            <div class="confetti"></div>
+                            <div class="confetti"></div>
+                            <div class="confetti"></div>
+                            <div class="confetti"></div>
+                            <div class="confetti"></div>
+                            <div class="confetti"></div>
+                            <div class="confetti"></div>
+                            <div class="confetti"></div>
+                            <div class="confetti"></div>
+                            <div class="confetti"></div>
+                        </div>
+                        <div class="trophy-container">
+                            <div class="trophy-glow"></div>
+                            <div class="trophy-icon">🏆</div>
+                        </div>
+                        <div class="winner-crown">👑</div>
+                        <div class="winner-label">TOURNAMENT CHAMPION</div>
+                        <div class="winner-name-large">${tournament.winner_name}</div>
+                        <div class="winner-stars">
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                            <span class="star">⭐</span>
+                        </div>
                     </div>
                 ` : ''}
             </div>

@@ -1670,17 +1670,16 @@ const App = (() => {
                 });
 
                 // Update next match in database (where winner was advanced)
+                // Only pass names - updateTournamentMatch will look up player IDs
                 if (currentMatch?.winner_next_match_id) {
                     const nextMatch = tournament.matches.find(m => m.id === currentMatch.winner_next_match_id);
                     if (nextMatch) {
                         await Storage.updateTournamentMatch(nextMatch.id, {
-                            player1_id: nextMatch.player1_id,
-                            player1_name: nextMatch.player1_name,
-                            player2_id: nextMatch.player2_id,
-                            player2_name: nextMatch.player2_name,
+                            player1_name: nextMatch.player1_name || undefined,
+                            player2_name: nextMatch.player2_name || undefined,
                             status: nextMatch.status
                         });
-                        console.log('Advanced winner to next match:', nextMatch.id);
+                        console.log('Advanced winner to next match:', nextMatch.id, 'Players:', nextMatch.player1_name, 'vs', nextMatch.player2_name);
                     }
                 }
 
@@ -1689,10 +1688,8 @@ const App = (() => {
                     const loserMatch = tournament.matches.find(m => m.id === currentMatch.loser_next_match_id);
                     if (loserMatch) {
                         await Storage.updateTournamentMatch(loserMatch.id, {
-                            player1_id: loserMatch.player1_id,
-                            player1_name: loserMatch.player1_name,
-                            player2_id: loserMatch.player2_id,
-                            player2_name: loserMatch.player2_name,
+                            player1_name: loserMatch.player1_name || undefined,
+                            player2_name: loserMatch.player2_name || undefined,
                             status: loserMatch.status
                         });
                         console.log('Advanced loser to losers bracket:', loserMatch.id);
@@ -1785,12 +1782,10 @@ const App = (() => {
                                 nextMatch.status = 'ready';
                             }
 
-                            // Save to database
+                            // Save to database - only pass names, not IDs
                             await Storage.updateTournamentMatch(nextMatch.id, {
-                                player1_id: nextMatch.player1_id,
-                                player1_name: nextMatch.player1_name,
-                                player2_id: nextMatch.player2_id,
-                                player2_name: nextMatch.player2_name,
+                                player1_name: nextMatch.player1_name || undefined,
+                                player2_name: nextMatch.player2_name || undefined,
                                 status: nextMatch.status
                             });
 
