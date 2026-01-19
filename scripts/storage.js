@@ -1289,6 +1289,69 @@ const Storage = (() => {
         }
     }
 
+    /**
+     * Delete a tournament participant
+     */
+    async function deleteTournamentParticipant(tournamentId, playerName) {
+        try {
+            const sb = ensureInitialized();
+
+            // First get the player ID
+            const { data: playerData } = await sb
+                .from('players')
+                .select('id')
+                .eq('name', playerName)
+                .single();
+
+            if (!playerData) {
+                console.log('Player not found in database, skipping delete');
+                return { success: true };
+            }
+
+            const { error } = await sb
+                .from('tournament_participants')
+                .delete()
+                .eq('tournament_id', tournamentId)
+                .eq('player_id', playerData.id);
+
+            if (error) {
+                console.error('Error deleting tournament participant:', error);
+                throw error;
+            }
+
+            console.log('✓ Deleted participant:', playerName);
+            return { success: true };
+        } catch (error) {
+            console.error('deleteTournamentParticipant error:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Clear all participants for a tournament (used before re-saving on start)
+     */
+    async function clearTournamentParticipants(tournamentId) {
+        try {
+            const sb = ensureInitialized();
+
+            const { error } = await sb
+                .from('tournament_participants')
+                .delete()
+                .eq('tournament_id', tournamentId);
+
+            if (error) {
+                console.error('Error clearing tournament participants:', error);
+                throw error;
+            }
+
+            console.log('✓ Cleared all participants for tournament');
+            return { success: true };
+        } catch (error) {
+            console.error('clearTournamentParticipants error:', error);
+            throw error;
+        }
+    }
+
     // ============================================================================
     // LEAGUE STORAGE OPERATIONS
     // ============================================================================
@@ -1738,6 +1801,8 @@ const Storage = (() => {
         saveTournamentMatches,
         updateTournamentMatch,
         updateTournamentParticipant,
+        deleteTournamentParticipant,
+        clearTournamentParticipants,
         // League operations
         saveLeague,
         getLeagues,

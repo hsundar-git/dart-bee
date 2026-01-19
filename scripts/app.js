@@ -35,6 +35,85 @@ const App = (() => {
     let currentTournament = null;
     let currentLeague = null;
 
+    // Tournament state persistence keys
+    const TOURNAMENT_STATE_KEY = 'dart_bee_active_tournament';
+    const LEAGUE_STATE_KEY = 'dart_bee_active_league';
+
+    /**
+     * Save tournament state to localStorage for persistence
+     */
+    function saveTournamentState(tournamentId) {
+        if (tournamentId) {
+            localStorage.setItem(TOURNAMENT_STATE_KEY, tournamentId);
+        } else {
+            localStorage.removeItem(TOURNAMENT_STATE_KEY);
+        }
+    }
+
+    /**
+     * Load tournament state from localStorage
+     */
+    function loadTournamentState() {
+        return localStorage.getItem(TOURNAMENT_STATE_KEY);
+    }
+
+    /**
+     * Save league state to localStorage for persistence
+     */
+    function saveLeagueState(leagueId) {
+        if (leagueId) {
+            localStorage.setItem(LEAGUE_STATE_KEY, leagueId);
+        } else {
+            localStorage.removeItem(LEAGUE_STATE_KEY);
+        }
+    }
+
+    /**
+     * Load league state from localStorage
+     */
+    function loadLeagueState() {
+        return localStorage.getItem(LEAGUE_STATE_KEY);
+    }
+
+    /**
+     * Get active competition info (tournament or league)
+     */
+    async function getActiveCompetition() {
+        const tournamentId = loadTournamentState();
+        if (tournamentId) {
+            try {
+                const tournament = await Storage.getTournament(tournamentId);
+                if (tournament && tournament.status === 'in_progress') {
+                    return { type: 'tournament', id: tournamentId, data: tournament };
+                } else if (tournament && tournament.status === 'completed') {
+                    // Clear completed tournament state
+                    saveTournamentState(null);
+                }
+            } catch (e) {
+                console.warn('Error loading tournament state:', e);
+                saveTournamentState(null);
+            }
+        }
+
+        const leagueId = loadLeagueState();
+        if (leagueId) {
+            try {
+                const league = await Storage.getLeague(leagueId);
+                if (league && league.status === 'in_progress') {
+                    return { type: 'league', id: leagueId, data: league };
+                } else if (league && league.status === 'completed') {
+                    // Clear completed league state
+                    saveLeagueState(null);
+                }
+            } catch (e) {
+                console.warn('Error loading league state:', e);
+                saveLeagueState(null);
+            }
+        }
+
+        return null;
+    }
+
     /**
      * Initialize the app and setup all event listeners
      */
@@ -155,12 +234,78 @@ const App = (() => {
                 UI.showToast('🎮 Game Resumed', 'info');
                 loadActiveGame();
             }
+
+            // Show competition context banner if applicable
+            await showCompetitionContextBanner(game);
+
             UI.hideLoader();
         } catch (error) {
             console.error('Error loading game:', error);
             UI.showToast('Failed to load game', 'error');
             loadHome();
             UI.hideLoader();
+        }
+    }
+
+    /**
+     * Show competition context banner for tournament/league matches
+     */
+    async function showCompetitionContextBanner(game) {
+        const banner = document.getElementById('competition-context-banner');
+        const nameEl = document.getElementById('context-competition-name');
+        const roundEl = document.getElementById('context-round-name');
+        const backBtn = document.getElementById('back-to-bracket-btn');
+
+        if (!banner) return;
+
+        // Hide by default
+        banner.classList.add('hidden');
+
+        if (game.tournament_id) {
+            try {
+                const tournament = await Storage.getTournament(game.tournament_id);
+                if (tournament) {
+                    const match = tournament.matches?.find(m => m.game_id === game.id);
+                    const totalRounds = Math.log2(tournament.max_players);
+                    const roundName = match ? Tournament.getRoundName(match.round, totalRounds, tournament.format) : 'Match';
+
+                    nameEl.textContent = tournament.name;
+                    roundEl.textContent = roundName;
+                    banner.querySelector('.context-icon').textContent = '🏆';
+
+                    // Setup back button
+                    backBtn.onclick = () => {
+                        Router.navigate('tournament', { tournamentId: game.tournament_id });
+                    };
+                    backBtn.textContent = 'Back to Bracket';
+
+                    banner.classList.remove('hidden');
+                }
+            } catch (e) {
+                console.warn('Error loading tournament context:', e);
+            }
+        } else if (game.league_id) {
+            try {
+                const league = await Storage.getLeague(game.league_id);
+                if (league) {
+                    const match = league.matches?.find(m => m.game_id === game.id);
+                    const roundName = match ? `Round ${match.round}` : 'Match';
+
+                    nameEl.textContent = league.name;
+                    roundEl.textContent = roundName;
+                    banner.querySelector('.context-icon').textContent = '📊';
+
+                    // Setup back button
+                    backBtn.onclick = () => {
+                        Router.navigate('league', { leagueId: game.league_id });
+                    };
+                    backBtn.textContent = 'Back to League';
+
+                    banner.classList.remove('hidden');
+                }
+            } catch (e) {
+                console.warn('Error loading league context:', e);
+            }
         }
     }
 
@@ -757,9 +902,10 @@ const App = (() => {
     /**
      * Show game completion modal with final rankings
      */
-    function showGameCompletionModal(finalRankings) {
+    async function showGameCompletionModal(finalRankings) {
         const modal = document.getElementById('game-completion-modal');
         const rankingsDiv = document.getElementById('completion-rankings');
+        const actionsDiv = document.querySelector('.completion-actions');
 
         console.log('showGameCompletionModal called');
         console.log('finalRankings:', finalRankings);
@@ -808,6 +954,76 @@ const App = (() => {
         console.log('Rankings HTML:', rankingsHtml);
         rankingsDiv.innerHTML = rankingsHtml;
         console.log('Rankings HTML set in DOM');
+
+        // Check if this is a competition match and update actions
+        if (actionsDiv && currentGame) {
+            let competitionButton = '';
+            let competitionType = null;
+            let competitionId = null;
+
+            if (currentGame.tournament_id) {
+                competitionType = 'tournament';
+                competitionId = currentGame.tournament_id;
+
+                // Handle competition game completion
+                const winner = finalRankings[0];
+                if (winner) {
+                    await handleCompetitionGameComplete(currentGame, winner);
+                }
+
+                competitionButton = `
+                    <button class="btn btn-success btn-large" id="back-to-tournament-btn">
+                        <span class="icon">🏆</span>
+                        Back to Tournament
+                    </button>
+                `;
+            } else if (currentGame.league_id) {
+                competitionType = 'league';
+                competitionId = currentGame.league_id;
+
+                // Handle competition game completion
+                const winner = finalRankings[0];
+                if (winner) {
+                    await handleCompetitionGameComplete(currentGame, winner);
+                }
+
+                competitionButton = `
+                    <button class="btn btn-success btn-large" id="back-to-league-btn">
+                        <span class="icon">📊</span>
+                        Back to League
+                    </button>
+                `;
+            }
+
+            // Update actions with competition button if applicable
+            actionsDiv.innerHTML = `
+                ${competitionButton}
+                <button class="btn btn-primary btn-large" id="rematch-btn">
+                    <span class="icon">🔄</span>
+                    Rematch with Same Players
+                </button>
+                <button class="btn btn-secondary btn-large" id="home-btn">
+                    <span class="icon">🏠</span>
+                    Go to Home
+                </button>
+            `;
+
+            // Re-attach event listeners
+            document.getElementById('rematch-btn')?.addEventListener('click', startRematch);
+            document.getElementById('home-btn')?.addEventListener('click', () => {
+                modal.classList.add('hidden');
+                Router.navigate('home');
+            });
+            document.getElementById('back-to-tournament-btn')?.addEventListener('click', () => {
+                modal.classList.add('hidden');
+                Router.navigate('tournament', { tournamentId: competitionId });
+            });
+            document.getElementById('back-to-league-btn')?.addEventListener('click', () => {
+                modal.classList.add('hidden');
+                Router.navigate('league', { leagueId: competitionId });
+            });
+        }
+
         // Show the game completion modal directly (don't use UI.showModal which is for generic modal)
         modal.classList.remove('hidden');
     }
@@ -1021,6 +1237,12 @@ const App = (() => {
 
         try {
             await Storage.saveTournament(tournament);
+
+            // Save initial participants to database
+            if (tournament.participants.length > 0) {
+                await Storage.saveTournamentParticipants(tournament.id, tournament.participants);
+            }
+
             currentTournament = tournament;
             UI.showToast('Tournament created!', 'success');
             Router.navigate('tournament', { tournamentId: tournament.id });
@@ -1039,11 +1261,20 @@ const App = (() => {
             const tournament = await Storage.getTournament(tournamentId);
             if (!tournament) {
                 UI.showToast('Tournament not found', 'error');
+                saveTournamentState(null);
                 Router.navigate('competitions');
                 return;
             }
 
             currentTournament = tournament;
+
+            // Persist tournament state if in progress
+            if (tournament.status === 'in_progress') {
+                saveTournamentState(tournamentId);
+            } else if (tournament.status === 'completed') {
+                saveTournamentState(null);
+            }
+
             UI.showPage('tournament-page');
             await UI.renderTournamentDetail(tournament);
             setupTournamentDetailEvents();
@@ -1093,8 +1324,17 @@ const App = (() => {
             btn.onclick = async () => {
                 const name = btn.dataset.name;
                 Tournament.removeParticipant(currentTournament, name);
+
+                // Delete from database
+                try {
+                    await Storage.deleteTournamentParticipant(currentTournament.id, name);
+                } catch (error) {
+                    console.error('Error deleting participant from DB:', error);
+                }
+
                 await UI.renderTournamentDetail(currentTournament);
                 setupTournamentDetailEvents();
+                UI.showToast(`${name} removed`, 'info');
             };
         });
 
@@ -1120,6 +1360,8 @@ const App = (() => {
                 }
 
                 try {
+                    // Clear existing participants and re-save with updated bracket positions
+                    await Storage.clearTournamentParticipants(currentTournament.id);
                     await Storage.saveTournamentParticipants(currentTournament.id, currentTournament.participants);
                     await Storage.saveTournamentMatches(currentTournament.id, currentTournament.matches);
                     await Storage.updateTournament(currentTournament.id, { status: 'in_progress' });
@@ -1237,11 +1479,20 @@ const App = (() => {
             const league = await Storage.getLeague(leagueId);
             if (!league) {
                 UI.showToast('League not found', 'error');
+                saveLeagueState(null);
                 Router.navigate('competitions');
                 return;
             }
 
             currentLeague = league;
+
+            // Persist league state if in progress
+            if (league.status === 'in_progress') {
+                saveLeagueState(leagueId);
+            } else if (league.status === 'completed') {
+                saveLeagueState(null);
+            }
+
             UI.showPage('league-page');
             await UI.renderLeagueDetail(league);
             setupLeagueDetailEvents();
@@ -1448,7 +1699,11 @@ const App = (() => {
         loadLeague,
         loadNewTournament,
         loadNewLeague,
-        handleCompetitionGameComplete
+        handleCompetitionGameComplete,
+        // State persistence
+        getActiveCompetition,
+        saveTournamentState,
+        saveLeagueState
     };
 })();
 

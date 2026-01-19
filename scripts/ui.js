@@ -197,6 +197,14 @@ const UI = (() => {
             // Also render stats widget
             await renderStatsWidget();
 
+            // Check for active competition first
+            let activeCompetition = null;
+            try {
+                activeCompetition = await App.getActiveCompetition();
+            } catch (e) {
+                console.warn('Error checking active competition:', e);
+            }
+
             // OPTIMIZED: Use pagination to load only what we need
             // Get interrupted games (active, not completed)
             const { games: interruptedGames } = await Storage.getGamesPaginated(1, 10, {
@@ -208,12 +216,40 @@ const UI = (() => {
                 completed: true
             });
 
-            if (interruptedGames.length === 0 && completedGames.length === 0) {
+            let html = '';
+
+            // Show active tournament/league section
+            if (activeCompetition) {
+                const { type, data } = activeCompetition;
+                const readyMatches = type === 'tournament'
+                    ? Tournament.getReadyMatches(data).length
+                    : (data.matches?.filter(m => m.status === 'pending').length || 0);
+                const inProgressMatches = type === 'tournament'
+                    ? Tournament.getInProgressMatches(data).length
+                    : (data.matches?.filter(m => m.status === 'in_progress').length || 0);
+
+                const statusText = inProgressMatches > 0
+                    ? `${inProgressMatches} match${inProgressMatches > 1 ? 'es' : ''} in progress`
+                    : `${readyMatches} match${readyMatches > 1 ? 'es' : ''} ready to play`;
+
+                html += `
+                    <div class="active-tournament-section">
+                        <div class="active-tournament-header">
+                            <span class="active-tournament-icon">${type === 'tournament' ? '🏆' : '📊'}</span>
+                            <span class="active-tournament-title">${data.name}</span>
+                        </div>
+                        <div class="active-tournament-status">${statusText}</div>
+                        <button class="btn btn-primary" onclick="Router.navigate('${type}', { ${type}Id: '${data.id}' })">
+                            Continue ${type === 'tournament' ? 'Tournament' : 'League'}
+                        </button>
+                    </div>
+                `;
+            }
+
+            if (interruptedGames.length === 0 && completedGames.length === 0 && !activeCompetition) {
                 container.innerHTML = '<p class="placeholder">No games yet. Start your first game!</p>';
                 return;
             }
-
-            let html = '';
 
             // Show interrupted games first with Resume button
             if (interruptedGames.length > 0) {
@@ -2006,7 +2042,8 @@ const UI = (() => {
         if (tournament.status === 'registration') {
             html += renderTournamentRegistration(tournament);
         } else {
-            // In progress or completed - show bracket
+            // In progress or completed - show bracket with progress indicator
+            html += renderTournamentProgress(tournament);
             html += renderTournamentBracket(tournament, bracket, totalRounds);
         }
 
@@ -2059,41 +2096,243 @@ const UI = (() => {
         }
 
         container.innerHTML = html;
+
+        // Setup registration UI if in registration phase
+        if (tournament.status === 'registration') {
+            setupTournamentRegistrationUI(tournament);
+        }
     }
 
     /**
-     * Render tournament registration view
+     * Render tournament progress indicator
+     */
+    function renderTournamentProgress(tournament) {
+        const totalMatches = tournament.matches?.length || 0;
+        const completedMatches = tournament.matches?.filter(m => m.status === 'completed').length || 0;
+        const percentage = totalMatches > 0 ? Math.round((completedMatches / totalMatches) * 100) : 0;
+
+        return `
+            <div class="tournament-progress">
+                <div class="tournament-progress-header">
+                    <span class="tournament-progress-text">Tournament Progress: ${completedMatches}/${totalMatches} matches</span>
+                    <span class="tournament-progress-percentage">${percentage}%</span>
+                </div>
+                <div class="tournament-progress-bar">
+                    <div class="tournament-progress-fill" style="width: ${percentage}%"></div>
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Render tournament registration view with enhanced UX
      */
     function renderTournamentRegistration(tournament) {
+        // Get currently registered names for filtering
+        const registeredNames = (tournament.participants || []).map(p => p.name.toLowerCase());
+        const isFull = (tournament.participants?.length || 0) >= tournament.max_players;
+
         let html = `
             <div class="registration-section">
                 <h3>Player Registration (${tournament.participants?.length || 0}/${tournament.max_players})</h3>
+
+                ${!isFull ? `
                 <div class="player-input-row">
-                    <input type="text" id="new-participant-name" placeholder="Enter player name" class="form-input">
+                    <div style="position: relative; flex: 1;">
+                        <input type="text" id="new-participant-name" placeholder="Type player name..." class="form-input" autocomplete="off">
+                        <div id="participant-suggestions" class="player-suggestions" style="display: none;"></div>
+                    </div>
                     <button class="btn btn-primary" id="add-participant-btn">Add Player</button>
                 </div>
+
+                <!-- Quick Add Chips for existing players -->
+                <div class="quick-add-section" id="quick-add-section">
+                    <div class="quick-add-header">Quick add existing players:</div>
+                    <div class="quick-add-chips" id="quick-add-chips">
+                        <!-- Populated dynamically -->
+                        <span class="loading-chips">Loading players...</span>
+                    </div>
+                </div>
+                ` : `
+                <div class="registration-full-notice" style="padding: var(--spacing-lg); background: rgba(45, 227, 109, 0.1); border-radius: var(--radius-md); text-align: center; color: var(--color-success); font-weight: 600;">
+                    Tournament is full! Ready to start.
+                </div>
+                `}
+
                 <div class="participants-list">
                     ${(tournament.participants || []).map((p, i) => `
-                        <div class="participant-item">
+                        <div class="participant-item" style="animation-delay: ${i * 0.05}s">
                             <span class="participant-position">#${i + 1}</span>
                             <span class="participant-name">${p.name}</span>
                             <button class="btn btn-small btn-danger remove-participant-btn" data-name="${p.name}">Remove</button>
                         </div>
                     `).join('')}
                 </div>
+
                 ${tournament.participants?.length >= 2 ? `
-                    <div class="registration-actions">
-                        <button class="btn btn-secondary" id="shuffle-participants-btn">Shuffle Order</button>
-                        <button class="btn btn-success btn-large" id="start-tournament-btn">Start Tournament</button>
+                    <div class="seeding-options">
+                        <div style="flex: 1;">
+                            <label>Seeding Options</label>
+                            <div style="display: flex; gap: var(--spacing-sm);">
+                                <button class="seeding-btn active" id="shuffle-participants-btn">
+                                    <span>🎲</span> Shuffle Random
+                                </button>
+                                <button class="seeding-btn" id="seed-by-winrate-btn">
+                                    <span>📊</span> Seed by Win Rate
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                ` : ''}
+                    <div class="registration-actions" style="margin-top: var(--spacing-xl);">
+                        <button class="btn btn-success btn-large" id="start-tournament-btn" style="width: 100%;">
+                            <span style="font-size: 20px; margin-right: 8px;">🚀</span>
+                            Start Tournament
+                        </button>
+                    </div>
+                ` : `
+                    <div class="registration-hint" style="text-align: center; color: var(--color-text-light); padding: var(--spacing-lg); font-size: var(--font-size-sm);">
+                        Add at least 2 players to start the tournament
+                    </div>
+                `}
             </div>
         `;
         return html;
     }
 
     /**
-     * Render tournament bracket visualization
+     * Setup tournament registration autocomplete and quick-add chips
+     */
+    async function setupTournamentRegistrationUI(tournament) {
+        const input = document.getElementById('new-participant-name');
+        const suggestionsEl = document.getElementById('participant-suggestions');
+        const quickAddSection = document.getElementById('quick-add-section');
+        const quickAddChips = document.getElementById('quick-add-chips');
+        const seedByWinrateBtn = document.getElementById('seed-by-winrate-btn');
+        const shuffleBtn = document.getElementById('shuffle-participants-btn');
+
+        if (!input || !suggestionsEl) return;
+
+        // Get existing players
+        let existingPlayers = [];
+        try {
+            const players = await Storage.getPlayers();
+            existingPlayers = Object.keys(players) || [];
+        } catch (error) {
+            console.warn('Could not load players:', error);
+        }
+
+        // Get registered names
+        const registeredNames = (tournament.participants || []).map(p => p.name.toLowerCase());
+
+        // Setup autocomplete
+        input.addEventListener('input', (e) => {
+            const value = e.target.value.toLowerCase().trim();
+
+            if (value.length === 0) {
+                suggestionsEl.style.display = 'none';
+                return;
+            }
+
+            const matches = existingPlayers.filter(player =>
+                player.toLowerCase().includes(value) &&
+                !registeredNames.includes(player.toLowerCase())
+            ).slice(0, 5);
+
+            if (matches.length === 0) {
+                suggestionsEl.style.display = 'none';
+                return;
+            }
+
+            suggestionsEl.innerHTML = matches.map(player => `
+                <div class="suggestion-item" data-player="${player}">${player}</div>
+            `).join('');
+            suggestionsEl.style.display = 'block';
+
+            suggestionsEl.querySelectorAll('.suggestion-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    input.value = item.getAttribute('data-player');
+                    suggestionsEl.style.display = 'none';
+                    // Trigger add
+                    document.getElementById('add-participant-btn')?.click();
+                });
+            });
+        });
+
+        input.addEventListener('blur', () => {
+            setTimeout(() => { suggestionsEl.style.display = 'none'; }, 200);
+        });
+
+        // Allow Enter key to add
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('add-participant-btn')?.click();
+            }
+        });
+
+        // Setup quick-add chips
+        if (quickAddChips) {
+            const availablePlayers = existingPlayers.filter(p =>
+                !registeredNames.includes(p.toLowerCase())
+            ).slice(0, 10);
+
+            if (availablePlayers.length === 0) {
+                quickAddSection.style.display = 'none';
+            } else {
+                quickAddChips.innerHTML = availablePlayers.map(player => `
+                    <button class="quick-add-chip" data-player="${player}">${player}</button>
+                `).join('');
+
+                quickAddChips.querySelectorAll('.quick-add-chip').forEach(chip => {
+                    chip.addEventListener('click', async () => {
+                        const playerName = chip.getAttribute('data-player');
+                        chip.classList.add('added');
+                        chip.disabled = true;
+
+                        // Trigger add via the existing add participant logic
+                        const nameInput = document.getElementById('new-participant-name');
+                        if (nameInput) {
+                            nameInput.value = playerName;
+                            document.getElementById('add-participant-btn')?.click();
+                        }
+                    });
+                });
+            }
+        }
+
+        // Setup seeding buttons
+        if (seedByWinrateBtn && shuffleBtn) {
+            seedByWinrateBtn.addEventListener('click', async () => {
+                shuffleBtn.classList.remove('active');
+                seedByWinrateBtn.classList.add('active');
+
+                // Get player stats and sort by win rate
+                try {
+                    const players = await Storage.getPlayers();
+                    tournament.participants.sort((a, b) => {
+                        const statsA = players[a.name] || { winRate: 0 };
+                        const statsB = players[b.name] || { winRate: 0 };
+                        return (statsB.winRate || 0) - (statsA.winRate || 0);
+                    });
+
+                    // Re-assign bracket positions
+                    tournament.participants.forEach((p, i) => {
+                        p.bracket_position = i + 1;
+                    });
+
+                    await UI.renderTournamentDetail(tournament);
+                    await setupTournamentRegistrationUI(tournament);
+                    showToast('Seeded by win rate!', 'success');
+                } catch (e) {
+                    console.error('Error seeding:', e);
+                    showToast('Failed to seed players', 'error');
+                }
+            });
+        }
+    }
+
+    /**
+     * Render tournament bracket visualization with CSS connectors
      */
     function renderTournamentBracket(tournament, bracket, totalRounds) {
         let html = '<div class="bracket-container">';
@@ -2106,12 +2345,13 @@ const UI = (() => {
         for (let round = 1; round <= totalRounds; round++) {
             const roundMatches = bracket.winners[round] || [];
             const roundName = Tournament.getRoundName(round, totalRounds, tournament.format);
+            const isLastRound = round === totalRounds;
 
             html += `
-                <div class="bracket-round">
+                <div class="bracket-round" data-round="${round}">
                     <div class="round-header">${roundName}</div>
-                    <div class="round-matches">
-                        ${roundMatches.map(m => renderBracketMatch(m)).join('')}
+                    <div class="round-matches bracket-round-wrapper">
+                        ${renderBracketRoundMatches(roundMatches, isLastRound)}
                     </div>
                 </div>
             `;
@@ -2125,13 +2365,17 @@ const UI = (() => {
             html += '<h4>Losers Bracket</h4>';
             html += '<div class="bracket-rounds">';
 
-            Object.keys(bracket.losers).sort((a, b) => a - b).forEach(round => {
+            const loserRounds = Object.keys(bracket.losers).sort((a, b) => a - b);
+            const lastLoserRound = loserRounds[loserRounds.length - 1];
+
+            loserRounds.forEach(round => {
                 const roundMatches = bracket.losers[round] || [];
+                const isLastRound = round === lastLoserRound;
                 html += `
-                    <div class="bracket-round">
+                    <div class="bracket-round" data-round="${round}">
                         <div class="round-header">Losers Round ${round}</div>
-                        <div class="round-matches">
-                            ${roundMatches.map(m => renderBracketMatch(m)).join('')}
+                        <div class="round-matches bracket-round-wrapper">
+                            ${renderBracketRoundMatches(roundMatches, isLastRound)}
                         </div>
                     </div>
                 `;
@@ -2143,13 +2387,57 @@ const UI = (() => {
             if (bracket.grandFinals) {
                 html += '<div class="bracket-section grand-finals">';
                 html += '<h4>Grand Finals</h4>';
-                html += renderBracketMatch(bracket.grandFinals);
+                html += `<div class="bracket-match-wrapper">${renderBracketMatch(bracket.grandFinals)}</div>`;
                 html += '</div>';
             }
         }
 
         html += '</div>';
         return html;
+    }
+
+    /**
+     * Render matches for a bracket round with pair grouping for connectors
+     */
+    function renderBracketRoundMatches(matches, isLastRound) {
+        if (matches.length === 0) return '';
+
+        // If single match (finals), no pairing needed
+        if (matches.length === 1) {
+            return `<div class="bracket-match-wrapper ${matches[0].status}">${renderBracketMatch(matches[0])}</div>`;
+        }
+
+        // Group matches into pairs for connector visualization
+        let html = '';
+        for (let i = 0; i < matches.length; i += 2) {
+            const match1 = matches[i];
+            const match2 = matches[i + 1];
+
+            // Determine pair status (for connector color)
+            const pairStatus = getPairStatus(match1, match2);
+
+            html += `<div class="match-pair ${pairStatus}" ${isLastRound ? '' : ''}>`;
+            html += `<div class="bracket-match-wrapper ${match1.status}">${renderBracketMatch(match1)}</div>`;
+            if (match2) {
+                html += `<div class="bracket-match-wrapper ${match2.status}">${renderBracketMatch(match2)}</div>`;
+            }
+            html += '</div>';
+        }
+
+        return html;
+    }
+
+    /**
+     * Determine the status class for a pair of matches
+     */
+    function getPairStatus(match1, match2) {
+        const m1Status = match1?.status || 'pending';
+        const m2Status = match2?.status || 'pending';
+
+        if (m1Status === 'completed' && m2Status === 'completed') return 'completed';
+        if (m1Status === 'in_progress' || m2Status === 'in_progress') return 'in-progress';
+        if (m1Status === 'ready' || m2Status === 'ready') return 'ready';
+        return 'pending';
     }
 
     /**
@@ -2160,8 +2448,11 @@ const UI = (() => {
                            match.status === 'ready' ? 'ready' :
                            match.status === 'in_progress' ? 'in-progress' : 'pending';
 
+        // Add click handler for ready matches
+        const clickHandler = match.status === 'ready' ? `onclick="App.loadTournament && document.querySelector('[data-match-id=\\'${match.id}\\'] .start-match-btn')?.click()"` : '';
+
         return `
-            <div class="bracket-match ${statusClass}" data-match-id="${match.id}">
+            <div class="bracket-match ${statusClass}" data-match-id="${match.id}" ${clickHandler}>
                 <div class="match-slot ${match.winner_id === match.player1_id ? 'winner' : ''}">
                     <span class="player-name">${match.player1_name || 'TBD'}</span>
                     ${match.status === 'completed' && match.winner_id === match.player1_id ? '<span class="winner-mark">✓</span>' : ''}
@@ -2534,6 +2825,7 @@ const UI = (() => {
         renderNewTournamentForm,
         renderNewLeagueForm,
         renderLeagueStandings,
-        renderLeagueFixtures
+        renderLeagueFixtures,
+        setupTournamentRegistrationUI
     };
 })();
