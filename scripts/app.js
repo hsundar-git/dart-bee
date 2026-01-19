@@ -222,6 +222,24 @@ const App = (() => {
                 return;
             }
 
+            // Fetch competition context (tournament/league) if this game is part of one
+            console.log('=== Loading Game Competition Context ===');
+            const competitionContext = await Storage.getGameCompetitionContext(gameId);
+            console.log('Competition context result:', competitionContext);
+            if (competitionContext) {
+                if (competitionContext.type === 'tournament') {
+                    game.tournament_id = competitionContext.tournament_id;
+                    game.tournament_match_id = competitionContext.tournament_match_id;
+                    console.log('Game is part of tournament:', competitionContext.tournament_id, 'match:', competitionContext.tournament_match_id);
+                } else if (competitionContext.type === 'league') {
+                    game.league_id = competitionContext.league_id;
+                    game.league_match_id = competitionContext.league_match_id;
+                    console.log('Game is part of league:', competitionContext.league_id);
+                }
+            } else {
+                console.log('No competition context found for this game');
+            }
+
             currentGame = game;
             isSpectatorMode = !Device.isGameOwner(game.device_id);
 
@@ -961,14 +979,21 @@ const App = (() => {
             let competitionType = null;
             let competitionId = null;
 
+            console.log('=== Game Completion - Competition Check ===');
+            console.log('currentGame.tournament_id:', currentGame.tournament_id);
+            console.log('currentGame.tournament_match_id:', currentGame.tournament_match_id);
+            console.log('currentGame.league_id:', currentGame.league_id);
+
             if (currentGame.tournament_id) {
                 competitionType = 'tournament';
                 competitionId = currentGame.tournament_id;
 
                 // Handle competition game completion
                 const winner = finalRankings[0];
+                console.log('Tournament match completed! Winner:', winner?.name);
                 if (winner) {
                     await handleCompetitionGameComplete(currentGame, winner);
+                    console.log('handleCompetitionGameComplete finished');
                 }
 
                 competitionButton = `
@@ -1217,6 +1242,7 @@ const App = (() => {
         const format = document.getElementById('tournament-format').value;
         const maxPlayers = parseInt(document.getElementById('tournament-size').value);
         const gameType = parseInt(document.getElementById('tournament-game-type').value);
+        const scoringMode = document.querySelector('input[name="tournament-scoring-mode"]:checked')?.value || 'per-turn';
 
         const tournament = Tournament.create({
             name,
@@ -1224,7 +1250,7 @@ const App = (() => {
             maxPlayers,
             gameType,
             winCondition: 'exact',
-            scoringMode: 'per-dart'
+            scoringMode
         });
 
         // Add players from form
@@ -1387,6 +1413,14 @@ const App = (() => {
                 await startTournamentMatch(matchId);
             };
         });
+
+        // Repair bracket button
+        const repairBtn = document.getElementById('repair-bracket-btn');
+        if (repairBtn) {
+            repairBtn.onclick = async () => {
+                await repairTournamentBracket(currentTournament.id);
+            };
+        }
     }
 
     /**
@@ -1624,13 +1658,46 @@ const App = (() => {
             const tournament = await Storage.getTournament(game.tournament_id);
             if (tournament) {
                 const winnerParticipant = tournament.participants.find(p => p.name === winner.name);
+                const currentMatch = tournament.matches.find(m => m.id === game.tournament_match_id);
+
+                // Record result (this also advances winner to next match in memory)
                 Tournament.recordMatchResult(tournament, game.tournament_match_id, winnerParticipant?.id, winner.name);
 
-                // Update database
+                // Update current match in database
                 await Storage.updateTournamentMatch(game.tournament_match_id, {
                     status: 'completed',
                     winner_name: winner.name
                 });
+
+                // Update next match in database (where winner was advanced)
+                if (currentMatch?.winner_next_match_id) {
+                    const nextMatch = tournament.matches.find(m => m.id === currentMatch.winner_next_match_id);
+                    if (nextMatch) {
+                        await Storage.updateTournamentMatch(nextMatch.id, {
+                            player1_id: nextMatch.player1_id,
+                            player1_name: nextMatch.player1_name,
+                            player2_id: nextMatch.player2_id,
+                            player2_name: nextMatch.player2_name,
+                            status: nextMatch.status
+                        });
+                        console.log('Advanced winner to next match:', nextMatch.id);
+                    }
+                }
+
+                // For double elimination, also update loser's next match
+                if (tournament.format === 'double_elimination' && currentMatch?.loser_next_match_id) {
+                    const loserMatch = tournament.matches.find(m => m.id === currentMatch.loser_next_match_id);
+                    if (loserMatch) {
+                        await Storage.updateTournamentMatch(loserMatch.id, {
+                            player1_id: loserMatch.player1_id,
+                            player1_name: loserMatch.player1_name,
+                            player2_id: loserMatch.player2_id,
+                            player2_name: loserMatch.player2_name,
+                            status: loserMatch.status
+                        });
+                        console.log('Advanced loser to losers bracket:', loserMatch.id);
+                    }
+                }
 
                 if (tournament.status === 'completed') {
                     await Storage.updateTournament(tournament.id, {
@@ -1674,6 +1741,84 @@ const App = (() => {
         }
     }
 
+    /**
+     * Repair tournament bracket - advance all winners from completed matches
+     * Use this to fix tournaments where matches completed before the advancement fix
+     */
+    async function repairTournamentBracket(tournamentId) {
+        UI.showLoader('Repairing tournament bracket...');
+        try {
+            const tournament = await Storage.getTournament(tournamentId);
+            if (!tournament) {
+                UI.showToast('Tournament not found', 'error');
+                return false;
+            }
+
+            console.log('Repairing tournament:', tournament.name);
+            console.log('Matches:', tournament.matches);
+
+            let repaired = 0;
+
+            // Process all completed matches and advance winners
+            for (const match of tournament.matches) {
+                if (match.status === 'completed' && match.winner_name && match.winner_next_match_id) {
+                    const nextMatch = tournament.matches.find(m => m.id === match.winner_next_match_id);
+                    if (nextMatch) {
+                        // Check if winner is already in next match
+                        const alreadyAdvanced = nextMatch.player1_name === match.winner_name ||
+                                                 nextMatch.player2_name === match.winner_name;
+
+                        if (!alreadyAdvanced) {
+                            console.log(`Advancing ${match.winner_name} from match ${match.match_number} (round ${match.round}) to next match`);
+
+                            // Place winner in next match
+                            if (!nextMatch.player1_name) {
+                                nextMatch.player1_id = match.winner_id;
+                                nextMatch.player1_name = match.winner_name;
+                            } else if (!nextMatch.player2_name) {
+                                nextMatch.player2_id = match.winner_id;
+                                nextMatch.player2_name = match.winner_name;
+                            }
+
+                            // Update match status
+                            if (nextMatch.player1_name && nextMatch.player2_name) {
+                                nextMatch.status = 'ready';
+                            }
+
+                            // Save to database
+                            await Storage.updateTournamentMatch(nextMatch.id, {
+                                player1_id: nextMatch.player1_id,
+                                player1_name: nextMatch.player1_name,
+                                player2_id: nextMatch.player2_id,
+                                player2_name: nextMatch.player2_name,
+                                status: nextMatch.status
+                            });
+
+                            repaired++;
+                        }
+                    }
+                }
+            }
+
+            UI.hideLoader();
+
+            if (repaired > 0) {
+                UI.showToast(`Repaired ${repaired} match advancement(s)!`, 'success');
+                // Reload tournament to show updated state
+                await loadTournament(tournamentId);
+            } else {
+                UI.showToast('No repairs needed - bracket is up to date', 'info');
+            }
+
+            return true;
+        } catch (error) {
+            console.error('Error repairing tournament:', error);
+            UI.showToast('Failed to repair tournament', 'error');
+            UI.hideLoader();
+            return false;
+        }
+    }
+
     // Public API
     return {
         init,
@@ -1700,6 +1845,7 @@ const App = (() => {
         loadNewTournament,
         loadNewLeague,
         handleCompetitionGameComplete,
+        repairTournamentBracket,
         // State persistence
         getActiveCompetition,
         saveTournamentState,

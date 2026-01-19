@@ -2093,6 +2093,24 @@ const UI = (() => {
                     </div>
                 `;
             }
+
+            // Show repair button if there are completed matches but no ready/in-progress matches
+            // This indicates the bracket may need repair (winners not advanced)
+            const completedMatches = tournament.matches.filter(m => m.status === 'completed').length;
+            const pendingMatches = tournament.matches.filter(m => m.status === 'pending').length;
+            if (completedMatches > 0 && readyMatches.length === 0 && inProgressMatches.length === 0 && pendingMatches > 0) {
+                html += `
+                    <div class="repair-section" style="margin-top: var(--spacing-xl); padding: var(--spacing-lg); background: #fff3cd; border-radius: var(--radius-lg); text-align: center;">
+                        <p style="margin-bottom: var(--spacing-md); color: #856404;">
+                            <strong>⚠️ Bracket Issue Detected</strong><br>
+                            Some match results may not have advanced winners to the next round.
+                        </p>
+                        <button class="btn btn-primary" id="repair-bracket-btn">
+                            🔧 Repair Bracket
+                        </button>
+                    </div>
+                `;
+            }
         }
 
         container.innerHTML = html;

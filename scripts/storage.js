@@ -694,6 +694,50 @@ const Storage = (() => {
     }
 
     /**
+     * Get competition context for a game (tournament or league)
+     */
+    async function getGameCompetitionContext(gameId) {
+        try {
+            const sb = ensureInitialized();
+
+            // Check tournament_matches
+            const { data: tournamentMatch, error: tournamentError } = await sb
+                .from('tournament_matches')
+                .select('id, tournament_id')
+                .eq('game_id', gameId)
+                .maybeSingle();
+
+            if (tournamentMatch) {
+                return {
+                    type: 'tournament',
+                    tournament_id: tournamentMatch.tournament_id,
+                    tournament_match_id: tournamentMatch.id
+                };
+            }
+
+            // Check league_matches
+            const { data: leagueMatch, error: leagueError } = await sb
+                .from('league_matches')
+                .select('id, league_id')
+                .eq('game_id', gameId)
+                .maybeSingle();
+
+            if (leagueMatch) {
+                return {
+                    type: 'league',
+                    league_id: leagueMatch.league_id,
+                    league_match_id: leagueMatch.id
+                };
+            }
+
+            return null;
+        } catch (error) {
+            console.error('getGameCompetitionContext error:', error);
+            return null;
+        }
+    }
+
+    /**
      * Delete a game (CASCADE will delete game_players and turns)
      */
     async function deleteGame(gameId) {
@@ -1215,7 +1259,10 @@ const Storage = (() => {
                 updated_at: new Date().toISOString()
             };
 
-            if (updates.player1_name) {
+            // Handle player1 - either by ID directly or by name lookup
+            if (updates.player1_id) {
+                matchUpdates.player1_id = updates.player1_id;
+            } else if (updates.player1_name) {
                 const { data: p1 } = await sb
                     .from('players')
                     .select('id')
@@ -1224,7 +1271,10 @@ const Storage = (() => {
                 if (p1) matchUpdates.player1_id = p1.id;
             }
 
-            if (updates.player2_name) {
+            // Handle player2 - either by ID directly or by name lookup
+            if (updates.player2_id) {
+                matchUpdates.player2_id = updates.player2_id;
+            } else if (updates.player2_name) {
                 const { data: p2 } = await sb
                     .from('players')
                     .select('id')
@@ -1786,6 +1836,7 @@ const Storage = (() => {
         saveGame,
         updateGame,
         getGame,
+        getGameCompetitionContext,
         deleteGame,
         getPlayers,
         getOrCreatePlayer,
