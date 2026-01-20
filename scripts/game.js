@@ -529,32 +529,31 @@ const Game = (() => {
         console.log('=== assignRankingsByFinishTurn DEBUG ===');
         console.log('All players:');
         game.players.forEach((p, i) => {
-            console.log(`  [${i}] ${p.name}: score=${p.currentScore}, winner=${p.winner}, finish_round=${p.finish_round}, darts=${p.stats?.totalDarts}, avgPerDart=${p.stats?.avgPerDart}`);
+            console.log(`  [${i}] ${p.name}: score=${p.currentScore}, winner=${p.winner}, turns=${p.turns.length}, darts=${p.stats?.totalDarts}, avgPerDart=${p.stats?.avgPerDart}`);
         });
 
-        // Get all finished players with their finish rounds and stats
+        // Get all finished players (score = 0) with their turn counts and stats
         const finishedPlayers = game.players
-            .filter(p => p.finish_round != null)
+            .filter(p => p.currentScore === 0)
             .map(p => ({
                 player: p,
-                finishRound: p.finish_round,
                 totalTurns: p.turns.length,
                 totalDarts: p.stats?.totalDarts || 0,
                 avgPerDart: p.stats?.avgPerDart || 0
             }));
 
-        console.log('Finished players:', finishedPlayers.map(fp => `${fp.player.name}:round${fp.finishRound}:avg${fp.avgPerDart.toFixed(2)}`).join(', '));
+        console.log('Finished players:', finishedPlayers.map(fp => `${fp.player.name}:turns${fp.totalTurns}:avg${fp.avgPerDart.toFixed(2)}`).join(', '));
 
-        // Sort by finish round (ascending), then by average per dart (descending - higher avg = better)
-        // Higher average means player was more efficient, so they rank higher (lower rank number)
+        // Sort by turns taken (ascending - fewer turns = better rank)
+        // Tie-breaker: average per dart (descending - higher avg = better)
         finishedPlayers.sort((a, b) => {
-            if (a.finishRound !== b.finishRound) {
-                return a.finishRound - b.finishRound;
+            if (a.totalTurns !== b.totalTurns) {
+                return a.totalTurns - b.totalTurns;  // Fewer turns = better rank
             }
-            // Same round: higher average = better rank (sort descending)
+            // Same turns: higher average = better rank (sort descending)
             return b.avgPerDart - a.avgPerDart;
         });
-        console.log('After sort:', finishedPlayers.map(fp => `${fp.player.name}:round${fp.finishRound}:avg${fp.avgPerDart.toFixed(2)}`).join(', '));
+        console.log('After sort:', finishedPlayers.map(fp => `${fp.player.name}:turns${fp.totalTurns}:avg${fp.avgPerDart.toFixed(2)}`).join(', '));
 
         // Assign sequential ranks - each player gets unique rank based on round + average
         finishedPlayers.forEach(({ player }, index) => {
@@ -593,27 +592,28 @@ const Game = (() => {
     }
 
     /**
-     * Calculate the current rank of a player based on their finish_round and average
-     * Players in earlier rounds rank higher, within same round higher average ranks better
+     * Calculate the current rank of a player based on their turn count and average
+     * Players with fewer turns rank higher, within same turn count higher average ranks better
      */
     function calculateCurrentRank(game, player) {
-        const playerFinishRound = player.finish_round;
+        const playerTurns = player.turns.length;
         const currentAvg = player.stats?.avgPerDart || 0;
 
-        // Count players who finished in earlier rounds
-        const playersInEarlierRounds = game.players.filter(
-            p => p.finish_round !== undefined && p.finish_round < playerFinishRound
+        // Count finished players who took fewer turns
+        const playersWithFewerTurns = game.players.filter(
+            p => p.currentScore === 0 && p !== player && p.turns.length < playerTurns
         ).length;
 
-        // Count players in the same round with higher average (they rank better)
-        const playersInSameRoundWithHigherAvg = game.players.filter(
-            p => p.finish_round === playerFinishRound &&
+        // Count finished players with same turns but higher average (they rank better)
+        const playersWithSameTurnsHigherAvg = game.players.filter(
+            p => p.currentScore === 0 &&
                  p !== player &&
+                 p.turns.length === playerTurns &&
                  (p.stats?.avgPerDart || 0) > currentAvg
         ).length;
 
-        // Rank = players before + players in same round with better avg + 1
-        return playersInEarlierRounds + playersInSameRoundWithHigherAvg + 1;
+        // Rank = players before + players with same turns but better avg + 1
+        return playersWithFewerTurns + playersWithSameTurnsHigherAvg + 1;
     }
 
     /**
