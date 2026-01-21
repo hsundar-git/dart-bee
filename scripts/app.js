@@ -1745,7 +1745,7 @@ const App = (() => {
     async function repairTournamentBracket(tournamentId) {
         UI.showLoader('Repairing tournament bracket...');
         try {
-            const tournament = await Storage.getTournament(tournamentId);
+            let tournament = await Storage.getTournament(tournamentId);
             if (!tournament) {
                 UI.showToast('Tournament not found', 'error');
                 return false;
@@ -1755,8 +1755,45 @@ const App = (() => {
             console.log('Matches:', tournament.matches);
 
             let repaired = 0;
+            let synced = 0;
 
-            // Process all completed matches and advance winners
+            // STEP 1: Sync match statuses from completed games
+            // This fixes matches where the game was completed but the match wasn't updated
+            console.log('Checking matches for game sync...');
+            for (const match of tournament.matches) {
+                console.log(`Match ${match.match_number} (round ${match.round}): status=${match.status}, game_id=${match.game_id}`);
+                if (match.game_id && match.status !== 'completed') {
+                    // Fetch the game to check if it's completed
+                    const game = await Storage.getGame(match.game_id);
+                    console.log(`  Game ${match.game_id}: is_active=${game?.is_active}, players=`, game?.players?.map(p => ({name: p.name, winner: p.winner, finish_rank: p.finish_rank})));
+                    if (game && !game.is_active) {
+                        // Game is completed, find the winner (note: is_winner is mapped to 'winner' in transformed game)
+                        const winner = game.players.find(p => p.winner || p.finish_rank === 1);
+                        if (winner) {
+                            console.log(`  Syncing completed game for match ${match.match_number}: winner is ${winner.name}`);
+
+                            // Update match with winner info
+                            await Storage.updateTournamentMatch(match.id, {
+                                status: 'completed',
+                                winner_name: winner.name
+                            });
+
+                            match.status = 'completed';
+                            match.winner_name = winner.name;
+                            match.winner_id = winner.id;
+                            synced++;
+                        }
+                    }
+                }
+            }
+
+            // Re-fetch tournament if we synced any matches to get updated data
+            if (synced > 0) {
+                console.log(`Synced ${synced} match(es) from completed games`);
+                tournament = await Storage.getTournament(tournamentId);
+            }
+
+            // STEP 2: Process all completed matches and advance winners
             for (const match of tournament.matches) {
                 if (match.status === 'completed' && match.winner_name && match.winner_next_match_id) {
                     const nextMatch = tournament.matches.find(m => m.id === match.winner_next_match_id);
@@ -1797,8 +1834,17 @@ const App = (() => {
 
             UI.hideLoader();
 
-            if (repaired > 0) {
-                UI.showToast(`Repaired ${repaired} match advancement(s)!`, 'success');
+            const totalFixed = synced + repaired;
+            if (totalFixed > 0) {
+                let message = '';
+                if (synced > 0 && repaired > 0) {
+                    message = `Synced ${synced} game(s), advanced ${repaired} winner(s)!`;
+                } else if (synced > 0) {
+                    message = `Synced ${synced} completed game(s)!`;
+                } else {
+                    message = `Advanced ${repaired} winner(s) to next round!`;
+                }
+                UI.showToast(message, 'success');
                 // Reload tournament to show updated state
                 await loadTournament(tournamentId);
             } else {

@@ -2118,11 +2118,15 @@ const UI = (() => {
                 `;
             }
 
-            // Show repair button if there are completed matches but no ready/in-progress matches
-            // This indicates the bracket may need repair (winners not advanced)
+            // Show repair button if:
+            // 1. There are completed matches but no ready/in-progress matches (winners not advanced)
+            // 2. OR there are matches with game_ids that aren't marked as completed (games finished but match not updated)
             const completedMatches = tournament.matches.filter(m => m.status === 'completed').length;
             const pendingMatches = tournament.matches.filter(m => m.status === 'pending').length;
-            if (completedMatches > 0 && readyMatches.length === 0 && inProgressMatches.length === 0 && pendingMatches > 0) {
+            const matchesWithGamesNotCompleted = tournament.matches.filter(m => m.game_id && m.status !== 'completed').length;
+            const needsRepair = (completedMatches > 0 && readyMatches.length === 0 && inProgressMatches.length === 0 && pendingMatches > 0)
+                || matchesWithGamesNotCompleted > 0;
+            if (needsRepair) {
                 html += `
                     <div class="repair-section" style="margin-top: var(--spacing-xl); padding: var(--spacing-lg); background: #fff3cd; border-radius: var(--radius-lg); text-align: center;">
                         <p style="margin-bottom: var(--spacing-md); color: #856404;">

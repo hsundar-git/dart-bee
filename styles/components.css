@@ -2638,19 +2638,27 @@
     margin-top: var(--spacing-lg);
 }
 
-/* Bracket Styles */
+/* Bracket Styles - Vertical Layout */
 .bracket-container {
-    overflow-x: auto;
     padding: var(--spacing-lg) 0;
 }
 
 .bracket-section {
-    margin-bottom: var(--spacing-2xl);
+    margin-bottom: var(--spacing-xl);
 }
 
 .bracket-section h4 {
     margin: 0 0 var(--spacing-lg) 0;
     color: var(--color-primary-dark);
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.bracket-section h4::before {
+    content: '🏆';
+    font-size: 1rem;
 }
 
 .winners-bracket {
@@ -2673,39 +2681,78 @@
     border: 2px solid #ffd54f;
 }
 
+/* Vertical bracket rounds */
 .bracket-rounds {
-    display: flex;
-    gap: var(--spacing-2xl);
-    overflow-x: auto;
-    padding-bottom: var(--spacing-md);
-}
-
-.bracket-round {
-    min-width: 180px;
-    flex-shrink: 0;
-}
-
-.round-header {
-    font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-bold);
-    color: var(--color-primary);
-    text-align: center;
-    margin-bottom: var(--spacing-md);
-    padding-bottom: var(--spacing-sm);
-    border-bottom: 2px solid var(--color-primary);
-}
-
-.round-matches {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-lg);
+    align-items: center;
 }
 
+/* Each round row */
+.bracket-round {
+    position: relative;
+    width: 100%;
+    max-width: 550px;
+    text-align: center;
+}
+
+/* Round header - styled pill */
+.round-header {
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-bold);
+    color: white;
+    text-align: center;
+    padding: var(--spacing-xs) var(--spacing-lg);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    border-radius: 20px;
+    display: inline-block;
+    margin-bottom: var(--spacing-sm);
+}
+
+/* Special styling for Finals */
+.bracket-round:last-child .round-header {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+}
+
+/* Matches grid within a round - 2 columns */
+.round-matches {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-sm);
+}
+
+/* Single match in round (finals) - center it */
+.round-matches:has(.match-pair:only-child),
+.round-matches:has(.bracket-match-wrapper:only-child) {
+    grid-template-columns: 1fr;
+    max-width: 260px;
+    margin: 0 auto;
+}
+
+/* Match pair wrapper */
+.match-pair {
+    display: contents;
+}
+
+/* Bracket match wrapper */
+.bracket-match-wrapper {
+    position: relative;
+}
+
+/* The match card */
 .bracket-match {
     background: white;
     border: 2px solid var(--color-border);
     border-radius: var(--radius-md);
     overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: all 0.2s ease;
+}
+
+.bracket-match:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
 }
 
 .bracket-match.completed {
@@ -2714,7 +2761,13 @@
 
 .bracket-match.ready {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 2px rgba(125, 95, 146, 0.2);
+    box-shadow: 0 0 0 3px rgba(125, 95, 146, 0.15), 0 2px 8px rgba(0, 0, 0, 0.06);
+    cursor: pointer;
+}
+
+.bracket-match.ready:hover {
+    box-shadow: 0 0 0 3px rgba(125, 95, 146, 0.25), 0 4px 12px rgba(0, 0, 0, 0.12);
+    transform: translateY(-3px);
 }
 
 .bracket-match.in-progress {
@@ -2724,15 +2777,17 @@
 
 @keyframes pulseMatch {
     0%, 100% { box-shadow: 0 0 0 0 rgba(255, 152, 0, 0.4); }
-    50% { box-shadow: 0 0 0 6px rgba(255, 152, 0, 0); }
+    50% { box-shadow: 0 0 0 8px rgba(255, 152, 0, 0); }
 }
 
+/* Match slots (player rows) */
 .match-slot {
     display: flex;
     justify-content: space-between;
     align-items: center;
     padding: var(--spacing-sm) var(--spacing-md);
     border-bottom: 1px solid var(--color-border);
+    min-height: 40px;
 }
 
 .match-slot:last-child {
@@ -2740,17 +2795,35 @@
 }
 
 .match-slot.winner {
-    background: rgba(45, 227, 109, 0.1);
+    background: linear-gradient(90deg, rgba(45, 227, 109, 0.15) 0%, rgba(45, 227, 109, 0.05) 100%);
 }
 
 .match-slot .player-name {
     font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+}
+
+.match-slot.winner .player-name {
+    color: #16a34a;
+    font-weight: var(--font-weight-bold);
 }
 
 .winner-mark {
     color: var(--color-success);
     font-weight: var(--font-weight-bold);
+    font-size: 1.1rem;
+}
+
+/* Round flow arrow */
+.bracket-round:not(:last-child)::after {
+    content: '↓';
+    display: block;
+    text-align: center;
+    color: var(--color-primary);
+    font-size: 1.2rem;
+    margin-top: var(--spacing-sm);
+    opacity: 0.5;
 }
 
 /* Matches Section */
