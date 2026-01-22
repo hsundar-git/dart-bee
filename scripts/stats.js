@@ -381,7 +381,7 @@ const Stats = (() => {
      */
     async function getQuickStats() {
         // Parallel queries for maximum speed
-        const [gamesResult, playersResult, topPlayerResult] = await Promise.all([
+        const [gamesResult, playersResult, highTurnResult] = await Promise.all([
             // Total completed games
             getSupabaseClient()
                 .from('games')
@@ -394,11 +394,11 @@ const Stats = (() => {
                 .select('*', { count: 'exact', head: true })
                 .gt('total_games_played', 0),
 
-            // Top player by average per turn
+            // Highest turn score all-time
             getSupabaseClient()
                 .from('player_leaderboard')
-                .select('name, avg_per_turn, rank_by_avg')
-                .order('rank_by_avg', { ascending: true })
+                .select('name, max_turn_score')
+                .order('max_turn_score', { ascending: false })
                 .limit(1)
                 .single()
         ]);
@@ -406,11 +406,67 @@ const Stats = (() => {
         return {
             totalGames: gamesResult.count || 0,
             totalPlayers: playersResult.count || 0,
-            topPlayer: topPlayerResult.data?.name || null,
-            highestAvg: topPlayerResult.data?.avg_per_turn
-                ? parseFloat(topPlayerResult.data.avg_per_turn).toFixed(2)
-                : '0.00'
+            highTurn: highTurnResult.data?.max_turn_score || 0
         };
+    }
+
+    /**
+     * Get today's stats
+     */
+    async function getTodayStats() {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayISO = today.toISOString();
+
+        try {
+            // Get games completed today
+            const { data: todayGames, error } = await getSupabaseClient()
+                .from('games')
+                .select('id, game_type')
+                .gte('completed_at', todayISO)
+                .not('completed_at', 'is', null);
+
+            if (error) throw error;
+
+            let bestAvg = 0;
+            let highTurn = 0;
+            let bestAvgPlayer = null;
+            let highTurnPlayer = null;
+
+            // Get stats from today's games with player names
+            if (todayGames && todayGames.length > 0) {
+                const gameIds = todayGames.map(g => g.id);
+
+                const { data: playerStats } = await getSupabaseClient()
+                    .from('game_players')
+                    .select('avg_per_turn, max_turn, player:players(name)')
+                    .in('game_id', gameIds);
+
+                if (playerStats) {
+                    playerStats.forEach(ps => {
+                        if (ps.avg_per_turn && ps.avg_per_turn > bestAvg) {
+                            bestAvg = ps.avg_per_turn;
+                            bestAvgPlayer = ps.player?.name || null;
+                        }
+                        if (ps.max_turn && ps.max_turn > highTurn) {
+                            highTurn = ps.max_turn;
+                            highTurnPlayer = ps.player?.name || null;
+                        }
+                    });
+                }
+            }
+
+            return {
+                gamesPlayed: todayGames?.length || 0,
+                bestAvg: bestAvg > 0 ? bestAvg.toFixed(1) : null,
+                bestAvgPlayer: bestAvgPlayer,
+                highTurn: highTurn > 0 ? highTurn : null,
+                highTurnPlayer: highTurnPlayer
+            };
+        } catch (e) {
+            console.error('Error getting today stats:', e);
+            return { gamesPlayed: 0, bestAvg: null, highTurn: null, bestAvgPlayer: null, highTurnPlayer: null };
+        }
     }
 
     /**
@@ -740,6 +796,7 @@ const Stats = (() => {
         getTimeFilterDate,
         getMetricValue,
         getQuickStats,
+        getTodayStats,
         formatStat,
         comparePlayerStats,
         getHeadToHeadRecord,

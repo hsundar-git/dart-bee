@@ -256,9 +256,11 @@ const Storage = (() => {
                 finish_rank: gp.finish_rank,
                 finish_round: gp.finish_round,
                 turns: [], // Turns not loaded by default for performance
+                totalTurns: gp.total_turns || 0, // For display without loading turns
                 stats: {
                     totalDarts: gp.total_darts,
                     totalScore: gp.total_score,
+                    totalTurns: gp.total_turns || 0,
                     avgPerDart: gp.avg_per_turn, // Note: this is actually avg per turn now
                     maxTurn: gp.max_turn,
                     maxDart: gp.max_dart,
@@ -1809,6 +1811,22 @@ const Storage = (() => {
         }
     }
 
+    /**
+     * Get active (in-progress) games
+     */
+    async function getActiveGames() {
+        try {
+            const { games } = await getGamesPaginated(1, 20, {
+                completed: false,
+                active: true
+            });
+            return games;
+        } catch (error) {
+            console.error('getActiveGames error:', error);
+            return [];
+        }
+    }
+
     // Public API
     return {
         init,
@@ -1837,6 +1855,7 @@ const Storage = (() => {
         }, // Expose Supabase client
         getGames,
         getGamesPaginated,
+        getActiveGames,
         saveGame,
         updateGame,
         getGame,

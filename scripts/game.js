@@ -128,8 +128,10 @@ const Game = (() => {
                 // Bust - score reverts to start of turn
                 busted = true;
             } else if (game.win_condition === 'below') {
-                // Below zero wins
+                // Amateur mode - below zero counts as finish
                 currentPlayer.currentScore = 0;
+                currentPlayer.winner = true;
+                currentPlayer.stats.checkoutSuccess++;
             }
         } else if (newScore === 0) {
             // Exact match - player wins
@@ -237,15 +239,16 @@ const Game = (() => {
                 game.current_player_index = nextActiveIndex;
             }
 
-            // Check if only 1 player remains and the round is complete
-            // A round is complete when current_turn is a multiple of player count
+            // Check if only 1 player remains and all players have had equal turns
             if (activePlayersRemaining === 1) {
-                const currentRound = Math.floor((game.current_turn - 1) / game.players.length);
-                const roundComplete = (game.current_turn % game.players.length) === 0;
+                // Check if all players have played equal number of turns (fair play)
+                const turnCounts = game.players.map(p => p.turns.length);
+                const maxTurns = Math.max(...turnCounts);
+                const allEqualTurns = turnCounts.every(t => t === maxTurns);
 
-                // If round just completed and only 1 player remains, they're the loser
-                if (roundComplete) {
-                    console.log(`Round ${currentRound} complete with 1 player remaining - ending game`);
+                // If all players have had equal turns, end the game
+                if (allEqualTurns) {
+                    console.log(`All players have ${maxTurns} turns and 1 player remaining - ending game`);
                     assignRankingsByFinishTurn(game);
                     endGame(game);
                     const finalRankings = getRankings(game);
@@ -292,16 +295,17 @@ const Game = (() => {
         game.current_turn++;
 
         // Check if this player is the last one and all others have finished
-        // If so, they've had their chance in this round - end the game
+        // If so, they've had their chance - end the game when all have equal turns
         const activePlayers = game.players.filter(p => !p.winner);
         if (activePlayers.length === 1) {
-            // Check if the round is complete (all players have had their turn)
-            const roundComplete = (game.current_turn % game.players.length) === 0;
-            const currentRound = Math.floor((game.current_turn - 1) / game.players.length);
+            // Check if all players have played equal number of turns (fair play)
+            const turnCounts = game.players.map(p => p.turns.length);
+            const maxTurns = Math.max(...turnCounts);
+            const allEqualTurns = turnCounts.every(t => t === maxTurns);
 
-            // End game if round is complete - last player is the loser
-            if (roundComplete) {
-                console.log(`Round ${currentRound} complete with 1 player remaining (didn't finish) - ending game`);
+            // End game if all players have had equal turns
+            if (allEqualTurns) {
+                console.log(`All players have ${maxTurns} turns, 1 player remaining (didn't finish) - ending game`);
                 assignRankingsByFinishTurn(game);
                 endGame(game);
                 const finalRankings = getRankings(game);

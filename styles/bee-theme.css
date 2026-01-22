@@ -1,15 +1,15 @@
 /* ============================
    BEE THEME ENHANCEMENTS
-   Inspired by NudgeBee.com
+   Navy Blue & Bee Yellow Theme
    ============================ */
 
 /* Gradient Backgrounds */
 .gradient-bg-primary {
-    background: linear-gradient(135deg, #7d5f92 0%, #9f80da 100%);
+    background: linear-gradient(135deg, #1B2D4A 0%, #2A4365 100%);
 }
 
 .gradient-bg-hero {
-    background: radial-gradient(75% 62%, #7d5f92 18%, #573e69 85%);
+    background: radial-gradient(75% 62%, #2A4365 18%, #1B2D4A 85%);
 }
 
 .gradient-overlay {
@@ -23,18 +23,18 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(135deg, rgba(125, 95, 146, 0.05) 0%, rgba(159, 128, 218, 0.1) 100%);
+    background: linear-gradient(135deg, rgba(27, 45, 74, 0.05) 0%, rgba(255, 215, 0, 0.05) 100%);
     pointer-events: none;
     border-radius: inherit;
 }
 
 /* Honeycomb Pattern Background */
 .honeycomb-bg {
-    background-color: #fbf5ff;
+    background-color: #f5f7fa;
     background-image:
-        repeating-linear-gradient(30deg, transparent, transparent 2px, rgba(125, 95, 146, 0.03) 2px, rgba(125, 95, 146, 0.03) 4px),
-        repeating-linear-gradient(150deg, transparent, transparent 2px, rgba(125, 95, 146, 0.03) 2px, rgba(125, 95, 146, 0.03) 4px),
-        repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(125, 95, 146, 0.03) 2px, rgba(125, 95, 146, 0.03) 4px);
+        repeating-linear-gradient(30deg, transparent, transparent 2px, rgba(27, 45, 74, 0.02) 2px, rgba(27, 45, 74, 0.02) 4px),
+        repeating-linear-gradient(150deg, transparent, transparent 2px, rgba(255, 215, 0, 0.02) 2px, rgba(255, 215, 0, 0.02) 4px),
+        repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(27, 45, 74, 0.02) 2px, rgba(27, 45, 74, 0.02) 4px);
 }
 
 /* Glassmorphism Effects */
@@ -42,15 +42,15 @@
     background: rgba(255, 255, 255, 0.7);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(125, 95, 146, 0.1);
-    box-shadow: 0 8px 32px 0 rgba(125, 95, 146, 0.1);
+    border: 1px solid rgba(27, 45, 74, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(27, 45, 74, 0.1);
 }
 
 .glass-card-dark {
-    background: rgba(125, 95, 146, 0.1);
+    background: rgba(27, 45, 74, 0.1);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(125, 95, 146, 0.2);
+    border: 1px solid rgba(27, 45, 74, 0.2);
 }
 
 /* Bee-themed Decorative Elements */
@@ -81,7 +81,7 @@
     position: absolute;
     width: 40px;
     height: 40px;
-    background: linear-gradient(135deg, rgba(125, 95, 146, 0.1) 0%, rgba(159, 128, 218, 0.1) 100%);
+    background: linear-gradient(135deg, rgba(27, 45, 74, 0.1) 0%, rgba(61, 90, 128, 0.1) 100%);
     clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
     opacity: 0.5;
 }
@@ -103,7 +103,7 @@
     left: -2px;
     right: -2px;
     bottom: -2px;
-    background: linear-gradient(135deg, #7d5f92, #9f80da, #38a2ff);
+    background: linear-gradient(135deg, #1B2D4A, #3D5A80, #38a2ff);
     border-radius: inherit;
     z-index: -1;
     opacity: 0;
@@ -116,7 +116,7 @@
 
 .stat-card-bee:hover {
     transform: translateY(-2px);
-    box-shadow: 0 12px 24px rgba(125, 95, 146, 0.2);
+    box-shadow: 0 12px 24px rgba(27, 45, 74, 0.2);
 }
 
 /* Bee Icon Styles */
@@ -169,15 +169,15 @@
         90deg,
         transparent,
         transparent 10px,
-        rgba(125, 95, 146, 0.02) 10px,
-        rgba(125, 95, 146, 0.02) 20px
+        rgba(27, 45, 74, 0.02) 10px,
+        rgba(27, 45, 74, 0.02) 20px
     );
 }
 
 /* Enhanced Button with Bee Theme */
 .btn-bee {
     background: linear-gradient(135deg, #facf39 0%, #f4c430 100%);
-    color: #271f36;
+    color: #1B2D4A;
     border: none;
     font-weight: 600;
     position: relative;
@@ -281,7 +281,7 @@
 
 /* Page Header with Gradient */
 .page-header-bee {
-    background: linear-gradient(135deg, #7d5f92 0%, #9f80da 50%, #38a2ff 100%);
+    background: linear-gradient(135deg, #1B2D4A 0%, #3D5A80 50%, #38a2ff 100%);
     color: white;
     padding: 2rem;
     border-radius: 1rem;

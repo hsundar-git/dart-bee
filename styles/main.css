@@ -5,24 +5,27 @@
 
 /* CSS Variables */
 :root {
-    /* Colors - Nudge Bee Palette */
-    --color-primary-dark: #573e69;
-    --color-primary: #7d5f92;
-    --color-primary-light: #9d7fb2;
+    /* Colors - Navy & Bee Yellow Palette */
+    --color-primary-dark: #1B2D4A;
+    --color-primary: #2A4365;
+    --color-primary-light: #3D5A80;
+    --color-accent: #FFD700;
+    --color-accent-light: #FFEB3B;
     --color-accent-green: #2de36d;
-    --color-accent-yellow: #facf39;
+    --color-accent-yellow: #FFD700;
     --color-accent-blue: #38a2ff;
     --color-accent-red: #ff6b6b;
 
-    --color-bg-light: #fbf5ff;
+    --color-bg-light: #f5f7fa;
     --color-bg-lighter: #ffffff;
-    --color-text-dark: #271f36;
-    --color-text-light: #6b5b7a;
-    --color-border: #e8daf5;
+    --color-bg-hover: #eef2f7;
+    --color-text-dark: #1B2D4A;
+    --color-text-light: #5a6b7d;
+    --color-border: #d1dbe6;
 
     /* Status Colors */
     --color-success: #2de36d;
-    --color-warning: #facf39;
+    --color-warning: #FFD700;
     --color-error: #ff6b6b;
     --color-info: #38a2ff;
 
@@ -164,7 +167,7 @@ body {
 
 .nav-link:hover {
     color: var(--color-primary);
-    background-color: rgba(125, 95, 146, 0.05);
+    background-color: rgba(27, 45, 74, 0.05);
 }
 
 .nav-link.active {
@@ -277,16 +280,16 @@ a:hover {
    ============================ */
 
 .form-container {
-    max-width: 600px;
+    max-width: 720px;
     margin: 0 auto;
     background: var(--color-bg-lighter);
-    padding: var(--spacing-2xl);
+    padding: var(--spacing-xl) var(--spacing-2xl);
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-md);
 }
 
 .form-group {
-    margin-bottom: var(--spacing-xl);
+    margin-bottom: var(--spacing-lg);
 }
 
 .form-group:last-child {
@@ -319,7 +322,7 @@ a:hover {
 .form-group textarea:focus {
     outline: none;
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(125, 95, 146, 0.1);
+    box-shadow: 0 0 0 3px rgba(27, 45, 74, 0.1);
 }
 
 .form-input {
@@ -336,7 +339,7 @@ a:hover {
 .form-input:focus {
     outline: none;
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(125, 95, 146, 0.1);
+    box-shadow: 0 0 0 3px rgba(27, 45, 74, 0.1);
 }
 
 /* Stepper Input */
@@ -393,15 +396,16 @@ input[type="checkbox"] {
     margin-bottom: 0;
 }
 
-/* Player Names Grid */
+/* Player Names Grid - 3 columns */
 .player-names-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--spacing-md);
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--spacing-sm);
 }
 
 .player-names-grid input {
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: var(--font-size-sm);
 }
 
 .hidden {
@@ -632,6 +636,12 @@ input[type="checkbox"] {
 
     /* stats-grid responsive styling in components.css */
 
+    .player-names-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 400px) {
     .player-names-grid {
         grid-template-columns: 1fr;
     }

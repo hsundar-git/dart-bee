@@ -172,17 +172,15 @@ const UI = (() => {
         try {
             const stats = await Stats.getQuickStats();
 
-            document.getElementById('stat-games').textContent = stats.totalGames || '0';
-            document.getElementById('stat-players').textContent = stats.totalPlayers || '0';
-            document.getElementById('stat-top-player').textContent = stats.topPlayer || '—';
-            document.getElementById('stat-avg').textContent = stats.highestAvg || '0';
+            const statGames = document.getElementById('stat-games');
+            const statPlayers = document.getElementById('stat-players');
+            const statHighTurn = document.getElementById('stat-high-turn');
+
+            if (statGames) statGames.textContent = stats.totalGames || '0';
+            if (statPlayers) statPlayers.textContent = stats.totalPlayers || '0';
+            if (statHighTurn) statHighTurn.textContent = stats.highTurn || '0';
         } catch (error) {
             console.error('Error rendering stats widget:', error);
-            // Set default values on error
-            document.getElementById('stat-games').textContent = '0';
-            document.getElementById('stat-players').textContent = '0';
-            document.getElementById('stat-top-player').textContent = '—';
-            document.getElementById('stat-avg').textContent = '0';
         }
     }
 
@@ -215,6 +213,7 @@ const UI = (() => {
             const { games: completedGames } = await Storage.getGamesPaginated(1, 5, {
                 completed: true
             });
+
 
             let html = '';
 
@@ -261,7 +260,7 @@ const UI = (() => {
                     const currentPlayer = game.players[currentPlayerIndex];
                     const date = new Date(game.created_at);
                     const dateStr = date.toLocaleDateString();
-                    const totalTurns = game.players.reduce((sum, p) => sum + p.turns.length, 0);
+                    const totalTurns = game.players.reduce((sum, p) => sum + (p.totalTurns || p.turns?.length || 0), 0);
                     const isOwner = Device.isGameOwner(game.device_id);
 
                     html += `
@@ -360,10 +359,91 @@ const UI = (() => {
     async function renderQuickStats() {
         const stats = await Stats.getQuickStats();
 
-        document.getElementById('stat-games').textContent = stats.totalGames || '0';
-        document.getElementById('stat-players').textContent = stats.totalPlayers || '0';
-        document.getElementById('stat-top-player').textContent = stats.topPlayer || '—';
-        document.getElementById('stat-avg').textContent = stats.highestAvg || '0.00';
+        // All-time stats
+        const statGames = document.getElementById('stat-games');
+        const statPlayers = document.getElementById('stat-players');
+        const statHighTurn = document.getElementById('stat-high-turn');
+
+        if (statGames) statGames.textContent = stats.totalGames || '0';
+        if (statPlayers) statPlayers.textContent = stats.totalPlayers || '0';
+        if (statHighTurn) statHighTurn.textContent = stats.highTurn || '0';
+
+        // Today's stats
+        try {
+            const todayStats = await Stats.getTodayStats();
+            const todayGames = document.getElementById('today-games');
+            const todayBest = document.getElementById('today-best');
+            const todayHigh = document.getElementById('today-high');
+
+            if (todayGames) todayGames.textContent = todayStats.gamesPlayed || '0';
+            if (todayBest) todayBest.textContent = todayStats.bestAvg || '—';
+            if (todayHigh) todayHigh.textContent = todayStats.highTurn || '—';
+        } catch (e) {
+            console.warn('Could not load today stats:', e);
+        }
+
+        // Mini leaderboard - Best avg per turn (minimum 7 games)
+        try {
+            const leaderboard = await Stats.getLeaderboard('avg-turn', 'all-time');
+            // Filter to players with at least 7 games
+            const qualifiedPlayers = leaderboard.filter(p => p.stats.gamesPlayed >= 7);
+            for (let i = 0; i < 3; i++) {
+                const nameEl = document.getElementById(`leader-${i + 1}`);
+                const winsEl = document.getElementById(`leader-${i + 1}-wins`);
+                if (nameEl && qualifiedPlayers[i]) {
+                    nameEl.textContent = qualifiedPlayers[i].name;
+                    if (winsEl) winsEl.textContent = qualifiedPlayers[i].stats.avgPerTurn;
+                } else if (nameEl) {
+                    nameEl.textContent = '—';
+                    if (winsEl) winsEl.textContent = '';
+                }
+            }
+        } catch (e) {
+            console.warn('Could not load leaderboard:', e);
+        }
+
+        // Check for active game (continue banner)
+        try {
+            const activeGames = await Storage.getActiveGames();
+            const myActiveGame = activeGames.find(g => g.device_id === Device.getDeviceId());
+            const banner = document.getElementById('continue-game-banner');
+            const detail = document.getElementById('continue-game-detail');
+            const continueBtn = document.getElementById('continue-game-btn');
+
+            if (banner && myActiveGame) {
+                banner.classList.remove('hidden');
+                if (detail) detail.textContent = `${myActiveGame.game_type} • ${myActiveGame.players?.length || 0} players`;
+                if (continueBtn) {
+                    continueBtn.onclick = () => Router.navigate('game', { gameId: myActiveGame.id });
+                }
+            } else if (banner) {
+                banner.classList.add('hidden');
+            }
+        } catch (e) {
+            console.warn('Could not check active games:', e);
+        }
+
+        // Live games (spectatable)
+        try {
+            const activeGames = await Storage.getActiveGames();
+            const otherGames = activeGames.filter(g => g.device_id !== Device.getDeviceId());
+            const liveList = document.getElementById('live-games-list');
+
+            if (liveList) {
+                if (otherGames.length > 0) {
+                    liveList.innerHTML = otherGames.slice(0, 3).map(g => `
+                        <div class="live-game-item" onclick="Router.navigate('game', { gameId: '${g.id}' })">
+                            <span class="live-game-info">${g.game_type}</span>
+                            <span class="live-game-players">${g.players?.map(p => p.name).join(' vs ') || 'Game'}</span>
+                        </div>
+                    `).join('');
+                } else {
+                    liveList.innerHTML = '<p class="placeholder-small">No live games</p>';
+                }
+            }
+        } catch (e) {
+            console.warn('Could not load live games:', e);
+        }
     }
 
     /**
@@ -654,6 +734,9 @@ const UI = (() => {
      */
     function renderCurrentPlayer(game) {
         const player = Game.getCurrentPlayer(game);
+        const amateurBadge = game.win_condition === 'below'
+            ? '<span class="amateur-mode-badge">Amateur Mode</span>'
+            : '';
 
         // Handle completed games or invalid player index
         if (!player) {
@@ -661,12 +744,12 @@ const UI = (() => {
             document.getElementById('current-player-name').textContent = winner
                 ? `${winner.name} Wins!`
                 : 'Game Complete';
-            document.getElementById('game-title').textContent = `${game.game_type} - Finished`;
+            document.getElementById('game-title').innerHTML = `${game.game_type} - Finished ${amateurBadge}`;
             return;
         }
 
         document.getElementById('current-player-name').textContent = `${player.name}'s Turn`;
-        document.getElementById('game-title').textContent = `${game.game_type} - Turn ${game.current_turn + 1}`;
+        document.getElementById('game-title').innerHTML = `${game.game_type} - Turn ${game.current_turn + 1} ${amateurBadge}`;
     }
 
     /**
@@ -852,148 +935,72 @@ const UI = (() => {
         const completedTime = game.completed_at ? new Date(game.completed_at).getTime() : null;
         const duration = completedTime ? Game.formatDuration(completedTime - createdTime) : 'N/A';
 
+        // Compact inline header
         let html = `
-            <div class="detail-header">
-                <div class="detail-header-row">
-                    <div class="detail-header-item">
-                        <div class="detail-label">Game Type</div>
-                        <div class="detail-value">${game.game_type} Points</div>
-                    </div>
-                    <div class="detail-header-item">
-                        <div class="detail-label">Date</div>
-                        <div class="detail-value">${date.toLocaleDateString()}</div>
-                    </div>
-                    <div class="detail-header-item">
-                        <div class="detail-label">Winner</div>
-                        <div class="detail-value">${winner?.name || 'N/A'}</div>
-                    </div>
-                    <div class="detail-header-item">
-                        <div class="detail-label">Duration</div>
-                        <div class="detail-value">${duration}</div>
-                    </div>
-                </div>
+            <div class="detail-header-compact">
+                <span class="detail-badge">${game.game_type}</span>
+                <span class="detail-info">${date.toLocaleDateString()}</span>
+                <span class="detail-info">⏱ ${duration}</span>
+                ${winner ? `<span class="detail-winner">🏆 ${winner.name}</span>` : ''}
             </div>
         `;
 
-        // Add final standings section
+        // Player stats cards (no podium - cards show ranking)
         if (game.completed_at) {
             const rankings = Game.getRankings(game);
-
-            // Separate finished players (with medals) from all players sorted by score
-            const finishedPlayers = rankings.filter(p => p.rank !== undefined && p.rank !== null && p.rank > 0);
             const allPlayersSortedByScore = [...rankings].sort((a, b) => a.score - b.score);
 
-            // Show podium if there are finished players
-            if (finishedPlayers.length > 0) {
-                html += '<div class="detail-section"><h3>🏆 Final Results</h3>';
-                html += '<div class="detail-podium-container">';
-
-                // Silver (2nd)
-                if (finishedPlayers[1]) {
-                    const p = finishedPlayers[1];
-                    html += `
-                        <div class="detail-podium silver">
-                            <div class="detail-podium-medal">🥈</div>
-                            <div class="detail-podium-name">${p.name}</div>
-                            <div class="detail-podium-label">2nd</div>
-                        </div>
-                    `;
-                }
-
-                // Gold (1st)
-                if (finishedPlayers[0]) {
-                    const p = finishedPlayers[0];
-                    html += `
-                        <div class="detail-podium gold">
-                            <div class="detail-podium-medal">🥇</div>
-                            <div class="detail-podium-name">${p.name}</div>
-                            <div class="detail-podium-label">1st</div>
-                        </div>
-                    `;
-                }
-
-                // Bronze (3rd)
-                if (finishedPlayers[2]) {
-                    const p = finishedPlayers[2];
-                    html += `
-                        <div class="detail-podium bronze">
-                            <div class="detail-podium-medal">🥉</div>
-                            <div class="detail-podium-name">${p.name}</div>
-                            <div class="detail-podium-label">3rd</div>
-                        </div>
-                    `;
-                }
-
-                html += '</div>';
-
-                // Show remaining players if any
-                if (finishedPlayers.length > 3) {
-                    html += '<div class="detail-remaining-players">';
-                    for (let i = 3; i < finishedPlayers.length; i++) {
-                        const p = finishedPlayers[i];
-                        html += `
-                            <div class="detail-result-item">
-                                <span class="detail-result-rank">${p.rank}${p.rank % 10 === 1 && p.rank % 100 !== 11 ? 'st' : p.rank % 10 === 2 && p.rank % 100 !== 12 ? 'nd' : p.rank % 10 === 3 && p.rank % 100 !== 13 ? 'rd' : 'th'}</span>
-                                <span class="detail-result-name">${p.name}</span>
-                                <span class="detail-result-darts">Darts: ${p.darts}</span>
-                            </div>
-                        `;
-                    }
-                    html += '</div>';
-                }
-
-                html += '</div>';
-            }
-
-            // Always show all players standings sorted by final score
-            html += '<div class="detail-section"><h3>📊 Final Standings</h3>';
-            html += '<div class="detail-standings-table">';
+            html += '<div class="detail-stats-grid">';
             allPlayersSortedByScore.forEach((p, index) => {
                 const position = index + 1;
-                let positionLabel = position + (position % 10 === 1 && position % 100 !== 11 ? 'st' : position % 10 === 2 && position % 100 !== 12 ? 'nd' : position % 10 === 3 && position % 100 !== 13 ? 'rd' : 'th');
+                const isWinner = p.score === 0;
+                const startScore = game.game_type;
+                const progress = ((startScore - p.score) / startScore) * 100;
 
                 html += `
-                    <div class="detail-standings-row">
-                        <span class="detail-standings-position">${positionLabel}</span>
-                        <span class="detail-standings-name">${p.name}</span>
-                        <span class="detail-standings-stats">
-                            <span>Score: ${p.score}</span>
-                            <span>Turns: ${p.turns}</span>
-                            <span>Avg: ${p.avgPerTurn || p.avgPerDart}</span>
-                        </span>
+                    <div class="detail-player-card ${isWinner ? 'winner' : ''}">
+                        <div class="detail-player-header">
+                            <span class="detail-player-rank">${isWinner ? '🏆' : '#' + position}</span>
+                            <span class="detail-player-name">${p.name}</span>
+                            <span class="score-badge">${p.score}</span>
+                        </div>
+                        <div class="detail-progress-bar">
+                            <div class="detail-progress-fill" style="width: ${progress}%"></div>
+                        </div>
+                        <div class="detail-player-stats">
+                            <div class="stat-item"><span class="stat-value">${p.darts}</span><span class="stat-label">Darts</span></div>
+                            <div class="stat-item"><span class="stat-value">${p.turns}</span><span class="stat-label">Turns</span></div>
+                            <div class="stat-item"><span class="stat-value">${p.avgPerTurn || '0'}</span><span class="stat-label">Avg</span></div>
+                        </div>
                     </div>
                 `;
             });
-            html += '</div>';
             html += '</div>';
         }
 
+        // Compact turn history grid - score with progress bar
+        const startScore = game.game_type;
+        html += '<div class="turn-history-section"><h4>Turn History</h4>';
         game.players.forEach(player => {
             html += `
-                <div class="player-turns">
-                    <div class="player-turns-header">
-                        ${player.winner ? '👑 ' : ''}${player.name}
-                        <span style="float: right;">Darts: ${player.stats.totalDarts}</span>
+                <div class="player-turns-compact">
+                    <div class="player-turns-label">${player.winner ? '👑 ' : ''}${player.name}</div>
+                    <div class="turns-grid">
+                        ${player.turns.map((turn, i) => {
+                            const total = turn.darts.reduce((a, b) => a + b, 0);
+                            const progress = ((startScore - turn.remaining) / startScore) * 100;
+                            const isHighScore = total >= 100;
+                            const isBusted = turn.busted;
+                            return `<div class="turn-cell ${isBusted ? 'busted' : ''} ${isHighScore ? 'high-score' : ''}" title="→ ${turn.remaining} left${turn.darts.length > 1 ? ' (' + turn.darts.join('+') + ')' : ''}">
+                                <span class="turn-score">${total}</span>
+                                <div class="turn-progress"><div class="turn-progress-fill" style="width:${progress}%"></div></div>
+                            </div>`;
+                        }).join('')}
                     </div>
+                </div>
             `;
-
-            player.turns.forEach((turn, turnIndex) => {
-                const turnTotal = turn.darts.reduce((a, b) => a + b, 0);
-                html += `
-                    <div class="turn-row">
-                        <div class="turn-number">Turn ${turnIndex + 1}</div>
-                        <div class="turn-darts-detail">
-                            ${turn.darts.map(d => `<div class="turn-dart-box">${d}</div>`).join('')}
-                            <div class="turn-dart-box" style="background: #f5f5f5; color: #666;">=</div>
-                            <div class="turn-dart-box" style="background: #f5f5f5; color: #666;">${turnTotal}</div>
-                        </div>
-                        <div class="turn-score-remaining">${turn.remaining}</div>
-                    </div>
-                `;
-            });
-
-            html += `</div>`;
         });
+        html += '</div>';
 
         content.innerHTML = html;
     }
@@ -1032,33 +1039,40 @@ const UI = (() => {
             const rank = index + 1;
             const rankClass = `rank-${rank}`;
             let metricDisplay = '';
+            let secondaryStat = '';
 
             switch (metric) {
                 case 'wins':
                     metricDisplay = entry.stats.gamesWon;
+                    secondaryStat = `${entry.stats.winRate}% win rate`;
                     break;
                 case 'win-rate':
                     metricDisplay = `${entry.stats.winRate}%`;
+                    secondaryStat = `${entry.stats.gamesWon}/${entry.stats.gamesPlayed} wins`;
                     break;
                 case 'avg-turn':
                     metricDisplay = entry.stats.avgPerTurn || entry.stats.avgPerDart || '0.00';
+                    secondaryStat = `${entry.stats.gamesPlayed} games`;
                     break;
                 case '100s':
                     metricDisplay = entry.stats.total100s || entry.fullStats?.total100s || 0;
+                    secondaryStat = `${entry.stats.gamesPlayed} games`;
                     break;
                 case 'max-turn':
                     metricDisplay = entry.stats.maxTurn || entry.fullStats?.maxTurn || 0;
+                    secondaryStat = `${entry.stats.gamesPlayed} games`;
                     break;
             }
 
+            const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '';
+            const rankDisplay = medal || `#${rank}`;
+
             return `
-                <div class="leaderboard-entry" onclick="App.viewPlayerProfile('${entry.name}')">
-                    <div class="leaderboard-rank ${rankClass}">#${rank}</div>
+                <div class="leaderboard-entry ${rankClass}" onclick="App.viewPlayerProfile('${entry.name}')">
+                    <div class="leaderboard-rank ${rankClass}">${rankDisplay}</div>
                     <div class="leaderboard-player">
                         <div class="leaderboard-player-name">${entry.name}</div>
-                        <div class="leaderboard-player-detail">
-                            ${entry.stats.gamesPlayed} games
-                        </div>
+                        <div class="leaderboard-player-detail">${secondaryStat}</div>
                     </div>
                     <div class="leaderboard-stat">
                         <div class="leaderboard-stat-value">${metricDisplay}</div>

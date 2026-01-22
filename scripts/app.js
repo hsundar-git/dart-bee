@@ -378,9 +378,39 @@ const App = (() => {
      * Setup home page events
      */
     function setupHomeEvents() {
-        document.getElementById('quick-new-game')?.addEventListener('click', () => {
+        // Hero new game button
+        document.getElementById('hero-new-game')?.addEventListener('click', () => {
             Router.navigate('new-game');
         });
+
+        // Quick start buttons (501, 301)
+        document.querySelectorAll('.btn-quick[data-game]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const gameType = btn.dataset.game;
+                await startQuickGame(parseInt(gameType));
+            });
+        });
+    }
+
+    /**
+     * Start a quick game with default settings
+     */
+    async function startQuickGame(gameType = 501) {
+        currentGame = Game.createGame({
+            playerCount: 2,
+            playerNames: ['Player 1', 'Player 2'],
+            gameType: gameType,
+            winBelow: true, // Amateur mode by default
+            scoringMode: 'per-turn'
+        });
+
+        try {
+            await Storage.saveGame(currentGame);
+            Router.navigate('game', { gameId: currentGame.id });
+        } catch (error) {
+            console.error('Failed to start quick game:', error);
+            UI.showToast('Failed to start game', 'error');
+        }
     }
 
     /**
@@ -544,6 +574,7 @@ const App = (() => {
         try {
             UI.showPage('home-page');
             await UI.renderRecentGames();
+            await UI.renderQuickStats();
             // Subscribe to live updates for active games
             subscribeToHomeUpdates();
         } catch (error) {

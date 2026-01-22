@@ -102,133 +102,202 @@
         <main class="main-content">
             <!-- Home Page -->
             <div id="home-page" class="page active">
-                <div class="page-header">
-                    <h1>Welcome to Dart Bee</h1>
-                    <p>Track your dart games and dominate the leaderboard</p>
+                <!-- Continue Game Banner (hidden by default) -->
+                <div id="continue-game-banner" class="continue-banner hidden">
+                    <div class="continue-info">
+                        <span class="continue-icon">🎯</span>
+                        <div class="continue-text">
+                            <span class="continue-title">Game in Progress</span>
+                            <span class="continue-detail" id="continue-game-detail">501 • 2 players</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" id="continue-game-btn">Continue</button>
                 </div>
 
-                <div class="home-grid-2col">
-                    <!-- Left Column: Stats & Actions -->
-                    <div class="home-left-column">
-                        <!-- Stats Widget Section with Quick Action -->
-                        <section class="home-section">
-                            <div class="stats-widget-header">
-                                <h3 style="margin: 0; color: var(--color-primary);">Quick Stats</h3>
-                                <button class="btn btn-primary btn-small" id="quick-new-game" style="white-space: nowrap;">
-                                    <span class="icon">➕</span>
-                                    New Game
-                                </button>
+                <!-- Hero Section -->
+                <div class="home-hero">
+                    <h1>🎯 Dart Bee</h1>
+                    <p>Ready. Aim. Score!</p>
+                    <button class="btn btn-hero" id="hero-new-game">
+                        <span class="hero-icon">🎯</span>
+                        <span>Start Game</span>
+                    </button>
+                </div>
+
+                <!-- Main Grid -->
+                <div class="home-grid">
+                    <!-- Today's Activity -->
+                    <div class="home-card today-card">
+                        <div class="card-header">
+                            <span class="card-icon">📅</span>
+                            <span class="card-title">Today</span>
+                        </div>
+                        <div class="today-stats">
+                            <div class="today-stat">
+                                <span class="today-value" id="today-games">0</span>
+                                <span class="today-label">Games</span>
                             </div>
-                            <div class="stats-widget">
-                                <div class="stats-grid">
-                                    <div class="stat-card">
-                                        <div class="stat-icon">🎮</div>
-                                        <div class="stat-content">
-                                            <div class="stat-value" id="stat-games">0</div>
-                                            <div class="stat-label">Games Played</div>
-                                        </div>
-                                    </div>
-                                    <div class="stat-card">
-                                        <div class="stat-icon">👥</div>
-                                        <div class="stat-content">
-                                            <div class="stat-value" id="stat-players">0</div>
-                                            <div class="stat-label">Players</div>
-                                        </div>
-                                    </div>
-                                    <div class="stat-card">
-                                        <div class="stat-icon">⭐</div>
-                                        <div class="stat-content">
-                                            <div class="stat-value" id="stat-top-player">—</div>
-                                            <div class="stat-label">Top Player</div>
-                                        </div>
-                                    </div>
-                                    <div class="stat-card">
-                                        <div class="stat-icon">📊</div>
-                                        <div class="stat-content">
-                                            <div class="stat-value" id="stat-avg">0</div>
-                                            <div class="stat-label">Best Avg/Turn</div>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div class="today-stat">
+                                <span class="today-value" id="today-best">—</span>
+                                <span class="today-label">Best Avg</span>
                             </div>
-                        </section>
+                            <div class="today-stat">
+                                <span class="today-value" id="today-high">—</span>
+                                <span class="today-label">High Turn</span>
+                            </div>
+                        </div>
                     </div>
 
-                    <!-- Right Column: Recent Games -->
-                    <section class="home-section recent-games-column">
-                        <h2>Recent Games</h2>
-                        <div id="recent-games-list" class="games-list">
-                            <p class="placeholder">No games yet. Start your first game!</p>
+                    <!-- Mini Leaderboard -->
+                    <div class="home-card leaderboard-card">
+                        <div class="card-header">
+                            <span class="card-icon">🏆</span>
+                            <span class="card-title">Top Players</span>
                         </div>
-                    </section>
+                        <div class="mini-leaderboard" id="mini-leaderboard">
+                            <div class="mini-leader">
+                                <span class="leader-medal">🥇</span>
+                                <span class="leader-name" id="leader-1">—</span>
+                                <span class="leader-wins" id="leader-1-wins"></span>
+                            </div>
+                            <div class="mini-leader">
+                                <span class="leader-medal">🥈</span>
+                                <span class="leader-name" id="leader-2">—</span>
+                                <span class="leader-wins" id="leader-2-wins"></span>
+                            </div>
+                            <div class="mini-leader">
+                                <span class="leader-medal">🥉</span>
+                                <span class="leader-name" id="leader-3">—</span>
+                                <span class="leader-wins" id="leader-3-wins"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- All-time Stats -->
+                    <div class="home-card stats-card">
+                        <div class="card-header">
+                            <span class="card-icon">📊</span>
+                            <span class="card-title">All Time</span>
+                        </div>
+                        <div class="stats-row">
+                            <div class="stat-mini">
+                                <span class="stat-mini-value" id="stat-games">0</span>
+                                <span class="stat-mini-label">Games</span>
+                            </div>
+                            <div class="stat-mini">
+                                <span class="stat-mini-value" id="stat-players">0</span>
+                                <span class="stat-mini-label">Players</span>
+                            </div>
+                            <div class="stat-mini">
+                                <span class="stat-mini-value" id="stat-high-turn">0</span>
+                                <span class="stat-mini-label">High Turn</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Games -->
+                    <div class="home-card live-card" id="live-games-card">
+                        <div class="card-header">
+                            <span class="card-icon">🔴</span>
+                            <span class="card-title">Live Games</span>
+                        </div>
+                        <div class="live-games-list" id="live-games-list">
+                            <p class="placeholder-small">No live games</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Games -->
+                <div class="home-section">
+                    <div class="section-header">
+                        <h3></h3>
+                        <a href="#/history" class="view-all">View All →</a>
+                    </div>
+                    <div id="recent-games-list" class="recent-games-grid">
+                        <p class="placeholder">No games yet. Start your first game!</p>
+                    </div>
                 </div>
             </div>
 
             <!-- New Game Page -->
             <div id="new-game-page" class="page">
                 <div class="page-header">
-                    <h1>Create New Game</h1>
+                    <h1>New Game</h1>
                 </div>
 
                 <form id="new-game-form" class="form-container">
-                    <!-- Number of Players -->
+                    <!-- 1. Amateur Mode -->
                     <div class="form-group">
-                        <label for="player-count">Number of Players</label>
-                        <div class="form-control">
-                            <button type="button" class="stepper-btn" id="decrease-players">−</button>
-                            <input type="number" id="player-count" name="playerCount" min="1" max="8" value="2" readonly>
-                            <button type="button" class="stepper-btn" id="increase-players">+</button>
+                        <label class="mode-toggle-card">
+                            <input type="checkbox" id="win-below" name="winBelow" checked>
+                            <div class="mode-toggle-content">
+                                <span class="mode-icon">✨</span>
+                                <div class="mode-text">
+                                    <span class="mode-label">Amateur Mode</span>
+                                    <span class="mode-hint">No exact checkout needed</span>
+                                </div>
+                                <span class="toggle-switch"></span>
+                            </div>
+                        </label>
+                    </div>
+
+                    <!-- 2. Scoring Mode Toggle -->
+                    <div class="form-group">
+                        <div class="scoring-toggle">
+                            <label class="scoring-option">
+                                <input type="radio" name="scoringMode" value="per-turn" checked>
+                                <div class="scoring-content">
+                                    <span class="scoring-icon">⚡</span>
+                                    <span class="scoring-label">Quick</span>
+                                    <span class="scoring-hint">Turn total</span>
+                                </div>
+                            </label>
+                            <label class="scoring-option">
+                                <input type="radio" name="scoringMode" value="per-dart">
+                                <div class="scoring-content">
+                                    <span class="scoring-icon">🎯</span>
+                                    <span class="scoring-label">Detailed</span>
+                                    <span class="scoring-hint">Each dart</span>
+                                </div>
+                            </label>
                         </div>
                     </div>
 
-                    <!-- Player Names -->
+                    <!-- 3. Players & Points Row -->
+                    <div class="form-row">
+                        <div class="form-group form-group-half">
+                            <label for="player-count">Players</label>
+                            <div class="form-control">
+                                <button type="button" class="stepper-btn" id="decrease-players">−</button>
+                                <input type="number" id="player-count" name="playerCount" min="1" max="8" value="2" readonly>
+                                <button type="button" class="stepper-btn" id="increase-players">+</button>
+                            </div>
+                        </div>
+                        <div class="form-group form-group-half">
+                            <label for="game-type">Points</label>
+                            <select id="game-type" name="gameType">
+                                <option value="101">101</option>
+                                <option value="201">201</option>
+                                <option value="301">301</option>
+                                <option value="501" selected>501</option>
+                                <option value="701">701</option>
+                                <option value="1001">1001</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                            <input type="number" id="custom-points" name="customPoints" min="1" max="9999" placeholder="Custom points" class="hidden">
+                        </div>
+                    </div>
+
+                    <!-- 4. Player Names -->
                     <div class="form-group">
-                        <label>Player Names (Optional)</label>
+                        <label>Player Names <span class="label-hint">(optional)</span></label>
                         <div id="player-names-container" class="player-names-grid">
                             <!-- Dynamically generated -->
                         </div>
                     </div>
 
-                    <!-- Game Type -->
-                    <div class="form-group">
-                        <label for="game-type">Starting Points</label>
-                        <select id="game-type" name="gameType">
-                            <option value="101">101</option>
-                            <option value="201">201</option>
-                            <option value="301">301</option>
-                            <option value="501" selected>501 (Standard)</option>
-                            <option value="701">701</option>
-                            <option value="1001">1001</option>
-                            <option value="custom">Custom</option>
-                        </select>
-                        <input type="number" id="custom-points" name="customPoints" min="1" max="9999" placeholder="Enter custom points" class="hidden">
-                    </div>
-
-                    <!-- Win Condition -->
-                    <div class="form-group">
-                        <label>
-                            <input type="checkbox" id="win-below" name="winBelow">
-                            <span>Win at zero or below (instead of exact zero)</span>
-                        </label>
-                    </div>
-
-                    <!-- Scoring Mode -->
-                    <div class="form-group">
-                        <label>Scoring Mode</label>
-                        <div class="radio-group">
-                            <label>
-                                <input type="radio" name="scoringMode" value="per-dart" checked>
-                                <span>Per Dart (Enter 3 darts per turn - recommended for stats)</span>
-                            </label>
-                            <label>
-                                <input type="radio" name="scoringMode" value="per-turn">
-                                <span>Per Turn Total (Enter total of all 3 darts)</span>
-                            </label>
-                        </div>
-                    </div>
-
                     <!-- Submit -->
-                    <button type="submit" class="btn btn-primary btn-large">Start Playing</button>
+                    <button type="submit" class="btn btn-primary btn-large">Start Game</button>
                 </form>
             </div>
 
@@ -480,67 +549,79 @@
             <div id="new-tournament-page" class="page">
                 <div class="page-header">
                     <button class="btn btn-secondary btn-small" onclick="Router.navigate('competitions')">← Back</button>
-                    <h1>Create Tournament</h1>
+                    <h1>New Tournament</h1>
                 </div>
 
                 <form id="new-tournament-form" class="form-container">
+                    <!-- Tournament Name -->
                     <div class="form-group">
-                        <label for="tournament-name">Tournament Name</label>
+                        <label for="tournament-name">Name</label>
                         <input type="text" id="tournament-name" placeholder="e.g., Summer Championship" required class="form-input">
                     </div>
 
+                    <!-- Scoring Mode Toggle -->
                     <div class="form-group">
-                        <label for="tournament-format">Format</label>
-                        <select id="tournament-format" class="form-input">
-                            <option value="single_elimination">Single Elimination</option>
-                            <option value="double_elimination">Double Elimination</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="tournament-size">Bracket Size</label>
-                        <select id="tournament-size" class="form-input">
-                            <option value="4">4 Players</option>
-                            <option value="8" selected>8 Players</option>
-                            <option value="16">16 Players</option>
-                            <option value="32">32 Players</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="tournament-game-type">Game Type</label>
-                        <select id="tournament-game-type" class="form-input">
-                            <option value="301">301</option>
-                            <option value="501" selected>501</option>
-                            <option value="701">701</option>
-                        </select>
-                    </div>
-
-                    <div class="form-group">
-                        <label>Scoring Mode</label>
-                        <div class="radio-group">
-                            <label class="radio-label">
+                        <div class="scoring-toggle">
+                            <label class="scoring-option">
                                 <input type="radio" name="tournament-scoring-mode" value="per-turn" checked>
-                                <span>Per Turn (enter total score)</span>
+                                <div class="scoring-content">
+                                    <span class="scoring-icon">⚡</span>
+                                    <span class="scoring-label">Quick</span>
+                                </div>
                             </label>
-                            <label class="radio-label">
+                            <label class="scoring-option">
                                 <input type="radio" name="tournament-scoring-mode" value="per-dart">
-                                <span>Per Dart (enter each dart)</span>
+                                <div class="scoring-content">
+                                    <span class="scoring-icon">🎯</span>
+                                    <span class="scoring-label">Detailed</span>
+                                </div>
                             </label>
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="tournament-player-count">Number of Players (Optional)</label>
-                        <select id="tournament-player-count" class="form-input">
-                            <option value="0">Add players later</option>
-                            <option value="2">2 Players</option>
-                            <option value="4">4 Players</option>
-                            <option value="8" selected>8 Players</option>
-                            <option value="16">16 Players</option>
-                        </select>
+                    <!-- Format & Points Row -->
+                    <div class="form-row">
+                        <div class="form-group form-group-half">
+                            <label for="tournament-format">Format</label>
+                            <select id="tournament-format" class="form-input">
+                                <option value="single_elimination">Single Elim</option>
+                                <option value="double_elimination">Double Elim</option>
+                            </select>
+                        </div>
+                        <div class="form-group form-group-half">
+                            <label for="tournament-game-type">Points</label>
+                            <select id="tournament-game-type" class="form-input">
+                                <option value="301">301</option>
+                                <option value="501" selected>501</option>
+                                <option value="701">701</option>
+                            </select>
+                        </div>
                     </div>
 
+                    <!-- Bracket Size & Player Count Row -->
+                    <div class="form-row">
+                        <div class="form-group form-group-half">
+                            <label for="tournament-size">Bracket</label>
+                            <select id="tournament-size" class="form-input">
+                                <option value="4">4 Players</option>
+                                <option value="8" selected>8 Players</option>
+                                <option value="16">16 Players</option>
+                                <option value="32">32 Players</option>
+                            </select>
+                        </div>
+                        <div class="form-group form-group-half">
+                            <label for="tournament-player-count">Add Now</label>
+                            <select id="tournament-player-count" class="form-input">
+                                <option value="0">Later</option>
+                                <option value="2">2</option>
+                                <option value="4">4</option>
+                                <option value="8" selected>8</option>
+                                <option value="16">16</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Player Names -->
                     <div class="form-group" id="tournament-players-group" style="display: none;">
                         <label>Player Names</label>
                         <div id="tournament-player-names" class="player-names-grid">
