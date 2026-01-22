@@ -535,6 +535,9 @@ const Storage = (() => {
 
                 console.log(`  Updating ${player.name}: finish_rank=${player.finish_rank}, isActualWinner=${isActualWinner}`);
 
+                // Calculate 100+ count from turns
+                const count100Plus = countScoresInRange(player.turns, 100, 180);
+
                 await sb
                     .from('game_players')
                     .update({
@@ -547,6 +550,7 @@ const Storage = (() => {
                         total_score: player.stats.totalScore,
                         max_dart: player.stats.maxDart,
                         max_turn: player.stats.maxTurn,
+                        count_180s: count100Plus,
                         updated_at: new Date().toISOString()
                     })
                     .eq('id', gp.id);
