@@ -771,7 +771,7 @@ const App = (() => {
     /**
      * Load leaderboard page
      */
-    async function loadLeaderboard(metric = 'wins', filter = 'all-time') {
+    async function loadLeaderboard(metric = 'avg-turn', filter = 'all-time') {
         const profilePage = document.getElementById('player-profile-page');
         profilePage.classList.add('hidden');
         document.getElementById('leaderboard-page').classList.remove('hidden');
