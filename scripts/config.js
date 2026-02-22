@@ -10,11 +10,16 @@
 const AppConfig = {
     supabase: {
         // Your Supabase project URL
-        url: 'https://hdiesaupdtjtazkxtylt.supabase.co',
+        // Cloud Supabase (uncomment for production)
+        // url: 'https://hdiesaupdtjtazkxtylt.supabase.co',
+        // anonKey: 'sb_publishable_6y9PlIYK4zl_ry2Cmm79Hw_BE96CJSZ'
 
-        // Your Supabase anonymous (publishable) key
-        // This is safe to use on the client-side (frontend)
-        // It only has permissions granted by RLS policies
-        anonKey: 'sb_publishable_6y9PlIYK4zl_ry2Cmm79Hw_BE96CJSZ'
-    }
+        // Local Supabase (for development/testing)
+        url: 'http://127.0.0.1:54321',
+        anonKey: 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH'
+    },
+
+    // Storage backend: 'supabase' | 'local'
+    // Set to 'local' to run fully offline using localStorage
+    storage: 'supabase'
 };

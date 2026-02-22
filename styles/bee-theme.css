@@ -12,6 +12,127 @@
     background: radial-gradient(75% 62%, #2A4365 18%, #1B2D4A 85%);
 }
 
+.modern-hero {
+    background:
+        radial-gradient(ellipse 80% 50% at 20% 80%, rgba(255, 215, 0, 0.15) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 20%, rgba(56, 162, 255, 0.12) 0%, transparent 60%),
+        linear-gradient(160deg, #0f1b2e 0%, #1B2D4A 30%, #2A4365 70%, #1a3a5c 100%);
+    padding: var(--spacing-lg) var(--spacing-md);
+    border-radius: var(--radius-xl);
+    color: white;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(11, 22, 44, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    margin-bottom: var(--spacing-md);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.modern-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.98 15v30L30 60 4.02 45V15z' fill-opacity='0.025' fill='%23ffffff' fill-rule='evenodd'/%3E%3C/svg%3E");
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.modern-hero::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 300px;
+    height: 300px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.hero-content {
+    position: relative;
+    z-index: 1;
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.hero-title {
+    font-size: clamp(1.4rem, 4vw, 2rem) !important;
+    font-weight: 900 !important;
+    margin-bottom: var(--spacing-xs);
+    letter-spacing: -0.5px;
+    color: white !important;
+}
+
+.hero-subtitle {
+    font-size: var(--font-size-sm);
+    opacity: 0.9;
+    margin-bottom: var(--spacing-md);
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.text-accent {
+    color: var(--color-accent);
+}
+
+.hero-actions {
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
+}
+
+.btn-hero-large {
+    padding: var(--spacing-sm) var(--spacing-xl) !important;
+    font-size: var(--font-size-base) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: 0 4px 16px rgba(255, 215, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+    position: relative;
+    z-index: 1;
+}
+
+.hero-quick-row {
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    margin-top: var(--spacing-sm);
+    flex-wrap: wrap;
+}
+
+.quick-action-card {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-md);
+    padding: 6px 14px;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 5px;
+    position: relative;
+    z-index: 1;
+}
+
+.quick-action-card:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.quick-icon {
+    font-size: 14px;
+    line-height: 1;
+}
+
+.quick-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+}
+
 .gradient-overlay {
     position: relative;
 }
@@ -35,6 +156,26 @@
         repeating-linear-gradient(30deg, transparent, transparent 2px, rgba(27, 45, 74, 0.02) 2px, rgba(27, 45, 74, 0.02) 4px),
         repeating-linear-gradient(150deg, transparent, transparent 2px, rgba(255, 215, 0, 0.02) 2px, rgba(255, 215, 0, 0.02) 4px),
         repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(27, 45, 74, 0.02) 2px, rgba(27, 45, 74, 0.02) 4px);
+}
+
+@media (prefers-color-scheme: dark) {
+    .honeycomb-bg {
+        background-color: #0f0f23;
+        background-image:
+            repeating-linear-gradient(30deg, transparent, transparent 2px, rgba(255, 255, 255, 0.01) 2px, rgba(255, 255, 255, 0.01) 4px),
+            repeating-linear-gradient(150deg, transparent, transparent 2px, rgba(255, 215, 0, 0.01) 2px, rgba(255, 215, 0, 0.01) 4px),
+            repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255, 255, 255, 0.01) 2px, rgba(255, 255, 255, 0.01) 4px);
+    }
+
+    .glass-card {
+        background: rgba(22, 33, 62, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    }
+
+    .stat-card-bee {
+        background: linear-gradient(135deg, rgba(22, 33, 62, 0.9) 0%, rgba(26, 26, 46, 0.9) 100%);
+    }
 }
 
 /* Glassmorphism Effects */

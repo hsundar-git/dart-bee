@@ -12,18 +12,37 @@ const SupabaseClient = (() => {
      */
     function init() {
         try {
+            // If storage is explicitly set to 'local', skip Supabase init
+            if (typeof AppConfig !== 'undefined' && AppConfig.storage === 'local') {
+                console.log('Storage mode is "local" — skipping Supabase init');
+                connectionStatus = 'skipped';
+                return false;
+            }
+
             if (typeof AppConfig === 'undefined') {
-                console.error('Error: scripts/config.js not found!');
-                console.error('Please follow the setup instructions in scripts/config.example.js');
-                throw new Error('Configuration file missing');
+                console.warn('scripts/config.js not found — will fall back to local storage');
+                connectionStatus = 'error';
+                return false;
+            }
+
+            if (!AppConfig.supabase) {
+                console.warn('No supabase config — will fall back to local storage');
+                connectionStatus = 'error';
+                return false;
             }
 
             const { url, anonKey } = AppConfig.supabase;
 
             if (!url || !anonKey || url.includes('YOUR_PROJECT')) {
-                console.error('Error: Supabase credentials not configured!');
-                console.error('Please update scripts/config.js with your Supabase project credentials');
-                throw new Error('Supabase credentials not configured');
+                console.warn('Supabase credentials not configured — will fall back to local storage');
+                connectionStatus = 'error';
+                return false;
+            }
+
+            if (typeof window.supabase === 'undefined') {
+                console.warn('Supabase JS library not loaded — will fall back to local storage');
+                connectionStatus = 'error';
+                return false;
             }
 
             supabaseInstance = window.supabase.createClient(url, anonKey);
@@ -32,7 +51,7 @@ const SupabaseClient = (() => {
             console.log('✓ Supabase client initialized successfully');
             return true;
         } catch (error) {
-            console.error('✗ Failed to initialize Supabase:', error.message);
+            console.warn('Failed to initialize Supabase (will fall back to local):', error.message);
             connectionStatus = 'error';
             return false;
         }

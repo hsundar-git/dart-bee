@@ -13,7 +13,8 @@ const Game = (() => {
             playerNames = [],
             gameType = 501,
             winBelow = false,
-            scoringMode = 'per-dart'
+            scoringMode = 'per-dart',
+            is_practice = false
         } = options;
 
         const game = {
@@ -26,6 +27,7 @@ const Game = (() => {
             current_player_index: 0,
             current_turn: 0,
             is_active: true,
+            is_practice: is_practice,
             device_id: Device.getDeviceId(),
             players: []
         };
@@ -161,7 +163,10 @@ const Game = (() => {
             currentPlayer.stats.totalDarts += dartCount;
             currentPlayer.stats.totalScore += totalScore;
             currentPlayer.stats.maxTurn = Math.max(currentPlayer.stats.maxTurn, totalScore);
-            currentPlayer.stats.maxDart = Math.max(currentPlayer.stats.maxDart, Math.max(...darts));
+            // In per-turn mode, darts=[turnTotal] so maxDart is not meaningful — skip it
+            if (game.scoring_mode !== 'per-turn') {
+                currentPlayer.stats.maxDart = Math.max(currentPlayer.stats.maxDart, Math.max(...darts));
+            }
             // Calculate averages (for UI display)
             currentPlayer.stats.avgPerTurn =
                 currentPlayer.stats.totalScore / currentPlayer.turns.length;
@@ -240,7 +245,8 @@ const Game = (() => {
             }
 
             // Check if only 1 player remains and all players have had equal turns
-            if (activePlayersRemaining === 1) {
+            // For multiplayer games: last player has had their chance to catch up
+            if (game.players.length > 1 && activePlayersRemaining === 1) {
                 // Check if all players have played equal number of turns (fair play)
                 const turnCounts = game.players.map(p => p.turns.length);
                 const maxTurns = Math.max(...turnCounts);
@@ -296,8 +302,9 @@ const Game = (() => {
 
         // Check if this player is the last one and all others have finished
         // If so, they've had their chance - end the game when all have equal turns
-        const activePlayers = game.players.filter(p => !p.winner);
-        if (activePlayers.length === 1) {
+        // For multiplayer games: only 1 active player remains, check for fair play ending
+        const remainingActivePlayers = game.players.filter(p => !p.winner);
+        if (game.players.length > 1 && remainingActivePlayers.length === 1) {
             // Check if all players have played equal number of turns (fair play)
             const turnCounts = game.players.map(p => p.turns.length);
             const maxTurns = Math.max(...turnCounts);
@@ -350,7 +357,9 @@ const Game = (() => {
                 currentPlayer.stats.totalDarts += dartCount;
                 currentPlayer.stats.totalScore += turnTotal;
                 currentPlayer.stats.maxTurn = Math.max(currentPlayer.stats.maxTurn, turnTotal);
-                currentPlayer.stats.maxDart = Math.max(currentPlayer.stats.maxDart, Math.max(...turn.darts));
+                if (game.scoring_mode !== 'per-turn') {
+                    currentPlayer.stats.maxDart = Math.max(currentPlayer.stats.maxDart, Math.max(...turn.darts));
+                }
             }
         });
 

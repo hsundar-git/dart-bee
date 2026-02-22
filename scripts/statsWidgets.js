@@ -206,7 +206,7 @@ const StatsWidgets = (() => {
                 <svg class="progress-ring" width="${size}" height="${size}">
                     <circle
                         class="progress-ring-bg"
-                        stroke="#e5e7eb"
+                        stroke="var(--color-ring-bg, #e5e7eb)"
                         stroke-width="8"
                         fill="transparent"
                         r="${radius}"
@@ -239,30 +239,31 @@ const StatsWidgets = (() => {
      * Render progress rings section with customizable goals
      */
     function renderProgressRings(stats, goals) {
+        const dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
         const rings = [
             {
                 label: 'Win Rate Goal',
                 value: parseFloat(stats.winRate) || 0,
                 max: goals.targetWinRate,
-                color: '#2de36d'
+                color: dark ? '#5ec987' : '#2de36d'
             },
             {
                 label: '100s Goal',
                 value: stats.total100s || 0,
                 max: goals.target100s,
-                color: '#7d5f92'
+                color: dark ? '#9d7fb2' : '#7d5f92'
             },
             {
                 label: 'Games Goal',
                 value: stats.gamesPlayed || 0,
                 max: goals.targetGames,
-                color: '#38a2ff'
+                color: dark ? '#6aa8d4' : '#38a2ff'
             },
             {
                 label: 'Avg/Turn Goal',
                 value: parseFloat(stats.avgPerTurn || stats.avgPerDart) || 0,
                 max: goals.targetAvgPerDart,
-                color: '#facf39'
+                color: dark ? '#d4b44a' : '#facf39'
             }
         ];
 
@@ -652,6 +653,12 @@ const StatsWidgets = (() => {
             normalizeValue(parseFloat(stats2.checkoutPercentage) || 0, 100)
         ];
 
+        const dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const gridColor = dark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.1)';
+        const textColor = dark ? '#d4d4d4' : '#2d2d2d';
+        const purple = dark ? '#9d7fb2' : '#7d5f92';
+        const green = dark ? '#5ec987' : '#2de36d';
+
         const chart = new Chart(ctx, {
             type: 'radar',
             data: {
@@ -661,17 +668,17 @@ const StatsWidgets = (() => {
                         label: name1,
                         data: data1,
                         backgroundColor: 'rgba(125, 95, 146, 0.2)',
-                        borderColor: '#7d5f92',
+                        borderColor: purple,
                         borderWidth: 2,
-                        pointBackgroundColor: '#7d5f92'
+                        pointBackgroundColor: purple
                     },
                     {
                         label: name2,
                         data: data2,
                         backgroundColor: 'rgba(45, 227, 109, 0.2)',
-                        borderColor: '#2de36d',
+                        borderColor: green,
                         borderWidth: 2,
-                        pointBackgroundColor: '#2de36d'
+                        pointBackgroundColor: green
                     }
                 ]
             },
@@ -680,14 +687,26 @@ const StatsWidgets = (() => {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        position: 'bottom'
+                        position: 'bottom',
+                        labels: {
+                            color: textColor
+                        }
                     }
                 },
                 scales: {
                     r: {
                         beginAtZero: true,
                         max: 100,
-                        ticks: { display: false }
+                        ticks: { display: false },
+                        grid: {
+                            color: gridColor
+                        },
+                        angleLines: {
+                            color: gridColor
+                        },
+                        pointLabels: {
+                            color: textColor
+                        }
                     }
                 }
             }

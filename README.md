@@ -31,29 +31,53 @@ A modern, responsive web app for tracking dart games with detailed statistics an
 ### User Experience
 - **Nudge Bee Design**: Modern purple theme matching Nudge Bee aesthetic
 - **Responsive Design**: Mobile-first approach, optimized for phones and tablets
-- **Offline Support**: Progressive Web App (PWA) with offline capability
-- **Data Persistence**: All data stored in browser LocalStorage
+- **Progressive Web App**: PWA with installable support
+- **Data Persistence**: All data stored in Supabase (PostgreSQL)
 - **Auto-save**: Automatic save after each turn
 - **Toast Notifications**: Real-time feedback on actions
 
 ## Getting Started
 
+### Prerequisites
+
+- A [Supabase](https://supabase.com) account and project (free tier works)
+- Python 3 or Node.js (for local dev server)
+
 ### Installation
 
-1. **Clone or fork this repository**
+1. **Clone the repository**
    ```bash
    git clone https://github.com/yourusername/dart-bee.git
    cd dart-bee
    ```
 
-2. **Enable GitHub Pages** (if hosting on GitHub)
+2. **Set up Supabase**
+   - Create a Supabase project at https://supabase.com
+   - Go to **Settings → API** and copy your **Project URL** and **Anon Public Key**
+   - Copy the config template and add your credentials:
+     ```bash
+     cp scripts/config.example.js scripts/config.js
+     ```
+   - Edit `scripts/config.js` and paste your URL and anon key
+
+3. **Run database migrations**
+   - In the Supabase SQL Editor (or via `psql`), run the migration files in `migrations/` **in sequential order** (V001 through V018)
+   - See `migrations/README.md` for detailed instructions
+
+4. **Start local development server**
+   ```bash
+   # Using Python
+   python -m http.server 8000
+
+   # Or using Node.js
+   npx http-server
+   ```
+   Then visit http://localhost:8000
+
+5. **Enable GitHub Pages** (for deployment)
    - Go to repository Settings → Pages
    - Select "main" branch as source
    - Your app will be available at `https://yourusername.github.io/dart-bee`
-
-3. **Local Development**
-   - Simply open `index.html` in a web browser
-   - Or use a local server: `python -m http.server 8000`
 
 ### First Use
 
@@ -90,51 +114,40 @@ A modern, responsive web app for tracking dart games with detailed statistics an
 - **Player Profile**: Detailed stats, records, and head-to-head data
 - **Game History**: Search and view detailed turn-by-turn breakdowns
 
-### Data Management
-
-#### Export Data
-```javascript
-const data = Storage.exportData();
-const json = JSON.stringify(data);
-// Save to file or share
-```
-
-#### Import Data
-```javascript
-Storage.importData(importedData);
-```
-
-#### Clear All Data
-- Use Settings (when added) or console:
-```javascript
-Storage.clearAll();
-```
-
 ## Architecture
 
 ### File Structure
 ```
 dart-bee/
-├── index.html           # Main app entry point
-├── manifest.json        # PWA configuration
-├── README.md           # This file
+├── index.html              # Main app entry point
+├── manifest.json           # PWA configuration
+├── README.md               # This file
 ├── styles/
-│   ├── main.css        # Design system and global styles
-│   └── components.css   # Component-specific styles
-└── scripts/
-    ├── storage.js      # LocalStorage management
-    ├── game.js         # Game logic and scoring
-    ├── stats.js        # Statistics calculations
-    ├── ui.js           # DOM rendering
-    └── app.js          # Routing and event handlers
+│   ├── main.css            # Design system and global styles
+│   ├── components.css      # Component-specific styles
+│   └── bee-theme.css       # Theme enhancements
+├── scripts/
+│   ├── config.example.js   # Supabase config template
+│   ├── config.js           # Supabase credentials (gitignored)
+│   ├── storage.js          # Supabase database operations
+│   ├── game.js             # Game logic and scoring
+│   ├── stats.js            # Statistics calculations
+│   ├── ui.js               # DOM rendering
+│   ├── app.js              # Routing and event handlers
+│   ├── router.js           # Hash-based SPA routing
+│   ├── tournament.js       # Tournament management
+│   ├── league.js           # League management
+│   ├── charts.js           # Chart.js visualizations
+│   └── statsWidgets.js     # Statistics widgets
+└── migrations/             # SQL migrations (V001-V018)
 ```
 
 ### Key Modules
 
 #### Storage (`storage.js`)
-- LocalStorage wrapper for games and players
-- Data validation and integrity checks
-- Export/import functionality
+- Supabase client wrapper for all database CRUD operations
+- Normalized schema queries (games, players, game_players, turns)
+- Real-time subscriptions for live game updates
 - Player profile management
 
 #### Game (`game.js`)
@@ -162,69 +175,50 @@ dart-bee/
 - Game state management
 - Page navigation
 
-## Data Model
+## Data Model (Normalized PostgreSQL Schema)
 
-### Game Object
-```javascript
-{
-  id: "uuid",
-  createdAt: timestamp,
-  completedAt: timestamp,
-  gameType: 501,
-  winCondition: "exact" | "below",
-  scoringMode: "per-dart" | "per-turn",
-  currentPlayerIndex: 0,
-  currentTurn: 0,
-  isActive: true,
-  players: [
-    {
-      id: "uuid",
-      name: "Player 1",
-      startingScore: 501,
-      currentScore: 0,
-      turns: [
-        {
-          darts: [60, 60, 60],
-          remaining: 321,
-          busted: false,
-          timestamp: timestamp
-        }
-      ],
-      winner: false,
-      stats: {
-        totalDarts: 15,
-        totalScore: 180,
-        avgPerDart: 12.0,
-        maxTurn: 180,
-        maxDart: 60,
-        checkoutAttempts: 0,
-        checkoutSuccess: 0
-      }
-    }
-  ]
-}
-```
+### `players` table
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| name | TEXT | Unique player name |
+| total_games_played | INTEGER | Aggregate games played |
+| total_games_won | INTEGER | Aggregate games won |
+| total_darts_thrown | INTEGER | Aggregate darts thrown |
+| total_score | INTEGER | Aggregate score |
+| total_180s | INTEGER | Total 180 scores |
+| total_140_plus | INTEGER | Total 140+ scores |
+| best_checkout | INTEGER | Best checkout score |
 
-### Player Profile
-```javascript
-{
-  id: "uuid",
-  name: "Player Name",
-  createdAt: timestamp,
-  aggregateStats: {
-    gamesPlayed: 50,
-    gamesWon: 25,
-    totalDarts: 1500,
-    total180s: 5,
-    total140plus: 25,
-    totalCheckoutAttempts: 50,
-    totalCheckoutSuccess: 23,
-    bestCheckout: 170,
-    maxDart: 180,
-    totalScore: 15000
-  }
-}
-```
+### `games` table
+| Column | Type | Description |
+|--------|------|-------------|
+| id | UUID | Primary key |
+| game_type | INTEGER | Target score (101, 301, 501, etc.) |
+| win_condition | TEXT | 'exact' or 'below' |
+| scoring_mode | TEXT | 'per-dart' or 'per-turn' |
+| is_active | BOOLEAN | Whether game is in progress |
+| winner_id | UUID | FK to players |
+| device_id | TEXT | Device that created the game |
+
+### `game_players` table (junction)
+| Column | Type | Description |
+|--------|------|-------------|
+| game_id | UUID | FK to games |
+| player_id | UUID | FK to players |
+| player_order | INTEGER | Turn order (0-based) |
+| starting_score | INTEGER | Starting score for this game |
+| is_winner | BOOLEAN | Whether player won |
+| total_turns/darts/score | INTEGER | Per-game stats |
+
+### `turns` table
+| Column | Type | Description |
+|--------|------|-------------|
+| game_player_id | UUID | FK to game_players |
+| turn_number | INTEGER | Turn number for this player |
+| dart_scores | INTEGER[] | Array of dart scores |
+| score_before/after | INTEGER | Score before and after turn |
+| is_busted | BOOLEAN | Whether turn was a bust |
 
 ## Design System
 
@@ -248,8 +242,8 @@ dart-bee/
 
 - **No Build Step**: Run directly in browser
 - **Fast Loading**: ~15KB gzipped
-- **Offline First**: Works without internet connection
-- **Lazy Statistics**: Calculated on demand
+- **Real-time**: Live game updates via Supabase subscriptions
+- **Lazy Statistics**: Calculated on demand via materialized views
 - **Auto-save**: Every 30 seconds
 - **Responsive**: Mobile-optimized
 
@@ -262,13 +256,16 @@ dart-bee/
 
 ## Technical Details
 
-### Storage Limits
-- LocalStorage: ~5-10MB per domain
-- Supports approximately 1000+ games depending on data size
+### Database
+- Supabase (hosted PostgreSQL) backend
+- Normalized schema with 4 core tables: `games`, `players`, `game_players`, `turns`
+- Materialized views for fast leaderboard queries
+- Database triggers for auto-updating aggregate stats
+- Real-time subscriptions for spectator mode
 
 ### Performance Considerations
-- Statistics calculated on-demand
-- Virtual scrolling for long lists (future enhancement)
+- Materialized views for O(1) leaderboard lookups
+- Indexed queries for game history
 - Debounced search inputs
 - Minimal DOM manipulation
 
@@ -302,8 +299,8 @@ npx http-server
 
 ### Code Organization
 - Modular IIFE (Immediately Invoked Function Expression) pattern
-- No external dependencies
-- Pure vanilla JavaScript
+- Vanilla JavaScript (no framework)
+- External dependencies: Supabase JS client, Chart.js (both loaded via CDN)
 - CSS Grid and Flexbox layouts
 
 ### Adding Features
@@ -337,16 +334,16 @@ npx http-server
 ## Troubleshooting
 
 ### Data Not Saving
-- Check browser's LocalStorage is enabled
-- Try clearing cache and reloading
-- Check browser's storage quota
+- Check that `scripts/config.js` has valid Supabase credentials
+- Open browser DevTools console and look for connection errors
+- Verify your Supabase project is active and migrations have been run
 
 ### Game Not Resuming
 - Manually navigate to home, then back to game
-- Check that currentGame isn't null
+- Check browser console for database errors
 
 ### Stats Not Updating
-- Stats are calculated on-demand
+- Materialized views may need refreshing — run `SELECT refresh_player_leaderboard();` in Supabase SQL Editor
 - Reload the leaderboard page
 
 ## License
