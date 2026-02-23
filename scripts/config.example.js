@@ -22,5 +22,11 @@ const AppConfig = {
         // Your Supabase anonymous (public) key
         // NOT your service_role key!
         anonKey: 'YOUR_ANON_KEY_HERE'
-    }
+    },
+
+    // Storage backend: 'supabase' (default) or 'local' (localStorage fallback)
+    // Set to 'local' to run fully offline without a Supabase backend.
+    // If omitted or set to 'supabase', the app will auto-fallback to 'local'
+    // when Supabase credentials are missing or the connection fails.
+    storage: 'supabase'
 };

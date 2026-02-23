@@ -5,18 +5,93 @@
 
 const UI = (() => {
     /**
-     * Show toast notification
+     * Get human-readable time ago string
      */
-    function showToast(message, type = 'info', duration = 3000) {
+    function getTimeAgo(dateStr) {
+        const now = new Date();
+        const date = new Date(dateStr);
+        const diffMs = now - date;
+        const mins = Math.floor(diffMs / 60000);
+        if (mins < 1) return 'just now';
+        if (mins < 60) return `${mins}m ago`;
+        const hours = Math.floor(mins / 60);
+        if (hours < 24) return `${hours}h ago`;
+        const days = Math.floor(hours / 24);
+        if (days < 7) return `${days}d ago`;
+        const weeks = Math.floor(days / 7);
+        if (weeks < 5) return `${weeks}w ago`;
+        const months = Math.floor(days / 30);
+        return `${months}mo ago`;
+    }
+
+    const avatarColors = [
+        '#e57373', '#f06292', '#ba68c8', '#9575cd', '#7986cb', '#64b5f6',
+        '#4fc3f7', '#4dd0e1', '#4db6ac', '#81c784', '#aed581', '#ff8a65',
+        '#d4e157', '#ffd54f', '#ffb74d', '#a1887f', '#90a4ae'
+    ];
+
+    function getColorForName(name) {
+        if (!name) return avatarColors[0];
+        let hash = 0;
+        for (let i = 0; i < name.length; i++) {
+            hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            hash = hash & hash;
+        }
+        const index = Math.abs(hash) % avatarColors.length;
+        return avatarColors[index];
+    }
+
+
+    /**
+     * Show toast notification with icons and progress bar
+     */
+    function showToast(message, type = 'info', duration = 3500) {
         const container = document.getElementById('toast-container');
+        if (!container) return;
+
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
-        toast.textContent = message;
+        
+        const icons = {
+            'success': 'check-circle',
+            'error': 'alert-circle',
+            'warning': 'alert-triangle',
+            'info': 'info'
+        };
+        const iconName = icons[type] || 'info';
+
+        toast.innerHTML = `
+            <div class="toast-content">
+                <i data-lucide="${iconName}" class="toast-icon"></i>
+                <div class="toast-message">${message}</div>
+            </div>
+            <div class="toast-progress"></div>
+        `;
+        
         container.appendChild(toast);
+        
+        // Initialize Lucide icon
+        if (window.lucide) {
+            window.lucide.createIcons({
+                attrs: {
+                    class: ['toast-icon']
+                },
+                nameAttr: 'data-lucide'
+            });
+        }
+
+        // Set progress bar animation
+        const progressBar = toast.querySelector('.toast-progress');
+        progressBar.style.transition = `width ${duration}ms linear`;
+        
+        // Trigger reflow then start animation
+        setTimeout(() => {
+            progressBar.style.width = '0%';
+        }, 10);
 
         setTimeout(() => {
-            toast.style.animation = 'slideInRight 200ms ease-in-out reverse';
-            setTimeout(() => toast.remove(), 200);
+            toast.style.animation = 'fadeOut 300ms ease-in-out forwards';
+            setTimeout(() => toast.remove(), 300);
         }, duration);
     }
 
@@ -72,14 +147,24 @@ const UI = (() => {
      * Show page
      */
     function showPage(pageId) {
+        const page = pageId.replace('-page', '');
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
         document.getElementById(pageId).classList.add('active');
 
-        // Update nav
+        // Update Desktop Nav
         document.querySelectorAll('.nav-link').forEach(link => {
-            link.classList.remove('active');
+            link.classList.toggle('active', link.dataset.page === page);
         });
-        document.querySelector(`[data-page="${pageId.replace('-page', '')}"]`)?.classList.add('active');
+
+        // Update Mobile Bottom Nav
+        document.querySelectorAll('.mobile-nav-link').forEach(link => {
+            link.classList.toggle('active', link.dataset.page === page);
+        });
+
+        // Re-render Lucide icons for the new page content if needed
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
 
         // Scroll to top
         window.scrollTo(0, 0);
@@ -206,12 +291,14 @@ const UI = (() => {
             // OPTIMIZED: Use pagination to load only what we need
             // Get interrupted games (active, not completed)
             const { games: interruptedGames } = await Storage.getGamesPaginated(1, 10, {
-                completed: false
+                completed: false,
+                includePractice: false // Don't show practice in interrupted by default
             });
 
             // Get 5 most recent completed games
             const { games: completedGames } = await Storage.getGamesPaginated(1, 5, {
-                completed: true
+                completed: true,
+                includePractice: false // Don't show practice in recent by default
             });
 
 
@@ -269,6 +356,7 @@ const UI = (() => {
                                 <div class="game-card-title">${game.game_type} Points</div>
                                 <div style="display: flex; gap: 8px; align-items: center;">
                                     <div class="game-card-date">${dateStr}</div>
+                                    ${game.is_practice ? '<span class="practice-badge">Practice</span>' : ''}
                                     <span class="game-status-badge" style="background: ${isOwner ? '#ff9800' : '#4caf50'}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">${isOwner ? 'IN PROGRESS' : 'LIVE'}</span>
                                 </div>
                             </div>
@@ -287,9 +375,12 @@ const UI = (() => {
                                 <span>Turn ${totalTurns} • Now: ${currentPlayer?.name || 'N/A'}</span>
                                 <span class="game-type-badge">${game.players.length} players</span>
                             </div>
-                            <button class="btn ${isOwner ? 'btn-primary' : 'btn-success'} btn-small" onclick="Router.navigate('game', {gameId: '${game.id}'})" style="width: 100%; margin-top: 8px;">
-                                ${isOwner ? '▶️ Resume Game' : '📺 Watch Live'}
-                            </button>
+                            <div style="display: flex; gap: 8px; margin-top: 8px;">
+                                <button class="btn ${isOwner ? 'btn-primary' : 'btn-success'} btn-small" onclick="Router.navigate('game', {gameId: '${game.id}'})" style="flex: 1;">
+                                    ${isOwner ? '▶️ Resume Game' : '📺 Watch Live'}
+                                </button>
+                                <button class="btn btn-danger btn-small delete-game-btn" data-game-id="${game.id}" onclick="event.stopPropagation(); App.confirmDeleteGame(this.dataset.gameId)"><svg class="icon-bin" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M5 6v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
+                            </div>
                         </div>
                     `;
                 });
@@ -310,15 +401,18 @@ const UI = (() => {
                     const winner = game.players.find(p => p.winner);
                     const date = new Date(game.created_at);
                     const dateStr = date.toLocaleDateString();
-                    const completedDate = game.completed_at ? new Date(game.completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                    const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    const hasTurns = game.players.some(p => (p.totalTurns || 0) > 0);
 
                     return `
                         <div class="game-card" onclick="Router.navigate('game-detail', {gameId: '${game.id}'})">
                             <div class="game-card-header">
                                 <div class="game-card-title">${game.game_type} Points</div>
                                 <div style="display: flex; gap: 8px; align-items: center;">
-                                    <div class="game-card-date">${dateStr}</div>
+                                    <div class="game-card-date">${dateStr} ${timeStr}</div>
+                                    ${game.is_practice ? '<span class="practice-badge">Practice</span>' : ''}
                                     <span class="game-status-badge" style="background: #4caf50; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">COMPLETED</span>
+                                    ${!hasTurns ? `<button class="btn btn-danger btn-small delete-game-btn" data-game-id="${game.id}" onclick="event.stopPropagation(); App.confirmDeleteGame(this.dataset.gameId)"><svg class="icon-bin" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M5 6v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>` : ''}
                                 </div>
                             </div>
                             <div class="game-card-players">
@@ -412,7 +506,13 @@ const UI = (() => {
 
             if (banner && myActiveGame) {
                 banner.classList.remove('hidden');
-                if (detail) detail.textContent = `${myActiveGame.game_type} • ${myActiveGame.players?.length || 0} players`;
+                if (detail) {
+                    const playerCount = myActiveGame.players?.length || 0;
+                    const currentTurn = myActiveGame.current_turn || 1;
+                    const currentPlayerIdx = myActiveGame.current_player_index || 0;
+                    const currentPlayerName = myActiveGame.players?.[currentPlayerIdx]?.name || '';
+                    detail.textContent = `${myActiveGame.game_type} • ${playerCount} players • Turn ${currentTurn}${currentPlayerName ? ` • ${currentPlayerName}'s turn` : ''}`;
+                }
                 if (continueBtn) {
                     continueBtn.onclick = () => Router.navigate('game', { gameId: myActiveGame.id });
                 }
@@ -484,14 +584,16 @@ const UI = (() => {
             }
         };
 
-        // Handle game type changes
-        gameTypeSelect.addEventListener('change', () => {
-            if (gameTypeSelect.value === 'custom') {
-                customPointsInput.classList.remove('hidden');
-                customPointsInput.focus();
-            } else {
-                customPointsInput.classList.add('hidden');
-            }
+        // Handle game type changes (radio buttons)
+        form.querySelectorAll('input[name="gameType"]').forEach(radio => {
+            radio.addEventListener('change', () => {
+                if (radio.value === 'custom' && radio.checked) {
+                    customPointsInput.classList.remove('hidden');
+                    customPointsInput.focus();
+                } else {
+                    customPointsInput.classList.add('hidden');
+                }
+            });
         });
 
         function updatePlayerNameInputs() {
@@ -613,6 +715,14 @@ const UI = (() => {
                 input.style.borderColor = '';
             });
 
+            // Show/hide duplicate error message
+            let dupError = playerNamesContainer.querySelector('.duplicate-error');
+            if (!dupError) {
+                dupError = document.createElement('p');
+                dupError.className = 'duplicate-error form-error';
+                playerNamesContainer.appendChild(dupError);
+            }
+
             if (hasDuplicates) {
                 // Find and highlight duplicates
                 const nameCounts = {};
@@ -623,6 +733,14 @@ const UI = (() => {
                     }
                 });
 
+                const dupNames = [...new Set(playerInputs
+                    .filter(input => {
+                        const name = input.value.trim().toLowerCase();
+                        return name !== '' && nameCounts[name] > 1;
+                    })
+                    .map(input => input.value.trim())
+                )];
+
                 playerInputs.forEach(input => {
                     const name = input.value.trim().toLowerCase();
                     if (name !== '' && nameCounts[name] > 1) {
@@ -630,11 +748,14 @@ const UI = (() => {
                     }
                 });
 
+                dupError.textContent = `Duplicate name: ${dupNames.join(', ')}`;
+                dupError.style.display = 'block';
                 submitButton.disabled = true;
                 submitButton.style.opacity = '0.5';
                 submitButton.style.cursor = 'not-allowed';
                 submitButton.title = 'Remove duplicate player names to continue';
             } else {
+                dupError.style.display = 'none';
                 submitButton.disabled = false;
                 submitButton.style.opacity = '';
                 submitButton.style.cursor = '';
@@ -654,7 +775,7 @@ const UI = (() => {
             const isCurrent = index === game.current_player_index;
             const stats = player.stats;
             return `
-                <div class="player-score-card ${isCurrent ? 'current' : ''}">
+                <div class="player-score-card ${isCurrent ? 'current' : ''}" data-player-index="${index}">
                     <div class="player-score-name">${player.name}</div>
                     <div class="player-score-value">${player.currentScore}</div>
                     <div class="player-score-stats">
@@ -757,31 +878,56 @@ const UI = (() => {
      */
     function renderTurnHistory(game) {
         const container = document.getElementById('turn-history');
-        container.innerHTML = '';
+        if (!container) return;
 
-        game.players.forEach((player, playerIndex) => {
-            if (player.turns.length === 0) return;
+        const startScore = game.game_type;
+        const maxRounds = Math.max(...game.players.map(p => p.turns.length), 0);
 
-            player.turns.forEach((turn, turnIndex) => {
-                const isCurrentPlayer = playerIndex === game.current_player_index;
-                const turnsHTML = `
-                    <div class="turn-item ${turn.busted ? 'busted' : ''}">
-                        <div class="turn-item-header">
-                            ${isCurrentPlayer ? '➜ ' : ''}${player.name} - Turn ${turnIndex + 1}
-                        </div>
-                        <div class="turn-item-details">
-                            <div class="turn-darts">
-                                ${turn.darts.map(d => `<span class="turn-dart">${d}</span>`).join('')}
-                            </div>
-                            <div class="turn-remaining">
-                                Remaining: ${turn.remaining}
-                            </div>
-                        </div>
-                    </div>
-                `;
-                container.innerHTML += turnsHTML;
-            });
+        if (maxRounds === 0) {
+            container.innerHTML = '<p class="placeholder" style="font-size: 0.8rem;">No turns yet</p>';
+            return;
+        }
+
+        let html = '<div class="scoreboard-table-wrapper"><table class="scoreboard-table">';
+
+        // Header row - player names
+        html += '<thead><tr><th class="scoreboard-round-col">Rnd</th>';
+        game.players.forEach((p, i) => {
+            const isCurrent = i === game.current_player_index;
+            html += `<th class="scoreboard-player-col" colspan="2">${isCurrent ? '➜ ' : ''}${p.name}</th>`;
         });
+        html += '</tr>';
+        // Sub-header
+        html += '<tr><th></th>';
+        game.players.forEach(() => {
+            html += '<th class="scoreboard-sub-header">Score</th><th class="scoreboard-sub-header">Left</th>';
+        });
+        html += '</tr></thead>';
+
+        // Body - latest round on top
+        html += '<tbody>';
+        for (let r = maxRounds - 1; r >= 0; r--) {
+            html += `<tr class="${r === maxRounds - 1 ? 'scoreboard-latest' : ''}">`;
+            html += `<td class="scoreboard-round-num">${r + 1}</td>`;
+            game.players.forEach(p => {
+                const turn = (p.turns || [])[r];
+                if (turn) {
+                    const darts = Array.isArray(turn.darts) ? turn.darts : [turn.darts || 0];
+                    const total = darts.reduce((a, b) => a + b, 0);
+                    const isBusted = turn.busted;
+                    const isHighScore = total >= 100;
+                    const scoreClass = isBusted ? 'scoreboard-busted' : isHighScore ? 'scoreboard-high' : '';
+                    html += `<td class="scoreboard-score ${scoreClass}" title="${darts.length > 1 ? darts.join('+') : ''}">${total}${isBusted ? '*' : ''}</td>`;
+                    html += `<td class="scoreboard-remaining">${turn.remaining}</td>`;
+                } else {
+                    html += '<td class="scoreboard-score">-</td><td class="scoreboard-remaining">-</td>';
+                }
+            });
+            html += '</tr>';
+        }
+        html += '</tbody></table></div>';
+
+        container.innerHTML = html;
     }
 
     /**
@@ -793,14 +939,15 @@ const UI = (() => {
         totalPages: 1,
         totalGames: 0,
         filter: '',
-        sortOrder: 'newest'
+        sortOrder: 'newest',
+        includePractice: false
     };
 
     /**
      * Render game history list with pagination
      * OPTIMIZED: Uses database-level pagination instead of client-side
      */
-    async function renderGameHistory(filter = '', sortOrder = 'newest', page = 1) {
+    async function renderGameHistory(filter = '', sortOrder = 'newest', page = 1, includePractice = false) {
         const container = document.getElementById('games-history-list');
 
         // OPTIMIZED: Database-level pagination and filtering
@@ -810,13 +957,15 @@ const UI = (() => {
             {
                 completed: true,
                 playerName: filter || undefined,
-                sortOrder: sortOrder
+                sortOrder: sortOrder,
+                includePractice: includePractice
             }
         );
 
         // Update pagination state
         paginationState.filter = filter;
         paginationState.sortOrder = sortOrder;
+        paginationState.includePractice = includePractice;
         paginationState.currentPage = pagination.page;
         paginationState.totalPages = pagination.totalPages;
         paginationState.totalGames = pagination.total;
@@ -824,7 +973,10 @@ const UI = (() => {
         // Show/hide pagination controls
         const paginationControls = document.getElementById('pagination-controls');
         if (pagination.total === 0) {
-            container.innerHTML = '<p class="placeholder">No games found</p>';
+            const hasFilter = filter && filter.trim().length > 0;
+            container.innerHTML = hasFilter
+                ? `<p class="placeholder">No games found for "${filter}". Try a different name or clear the filter.</p>`
+                : '<p class="placeholder">No games yet. Start your first game to see it here!</p>';
             if (paginationControls) paginationControls.style.display = 'none';
             document.getElementById('history-games-count').textContent = 'Total: 0 games';
             return;
@@ -836,6 +988,7 @@ const UI = (() => {
             const date = new Date(game.created_at);
             const dateStr = date.toLocaleDateString();
             const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const hasTurns = game.players.some(p => (p.totalTurns || 0) > 0);
 
             return `
                 <div class="game-card" onclick="Router.navigate('game-detail', {gameId: '${game.id}'})">
@@ -843,7 +996,9 @@ const UI = (() => {
                         <div class="game-card-title">${game.game_type} Points</div>
                         <div style="display: flex; gap: 8px; align-items: center;">
                             <div class="game-card-date">${dateStr} ${timeStr}</div>
+                            ${game.is_practice ? '<span class="practice-badge">Practice</span>' : ''}
                             <span class="game-status-badge" style="background: #4caf50; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">COMPLETED</span>
+                            ${!hasTurns ? `<button class="btn btn-danger btn-small delete-game-btn" data-game-id="${game.id}" onclick="event.stopPropagation(); App.confirmDeleteGame(this.dataset.gameId)"><svg class="icon-bin" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M5 6v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>` : ''}
                         </div>
                     </div>
                     <div class="game-card-players">
@@ -914,7 +1069,7 @@ const UI = (() => {
             btn.textContent = i;
             btn.onclick = (e) => {
                 e.preventDefault();
-                renderGameHistory(paginationState.filter, paginationState.sortOrder, i);
+                renderGameHistory(paginationState.filter, paginationState.sortOrder, i, paginationState.includePractice);
             };
             paginationNumbers.appendChild(btn);
         }
@@ -941,28 +1096,47 @@ const UI = (() => {
                 <span class="detail-badge">${game.game_type}</span>
                 <span class="detail-info">${date.toLocaleDateString()}</span>
                 <span class="detail-info">⏱ ${duration}</span>
+                ${game.is_practice ? '<span class="practice-badge">Practice</span>' : ''}
                 ${winner ? `<span class="detail-winner">🏆 ${winner.name}</span>` : ''}
             </div>
         `;
 
-        // Player stats cards (no podium - cards show ranking)
+        // Player stats cards - compute from actual turn data
         if (game.completed_at) {
-            const rankings = Game.getRankings(game);
-            const allPlayersSortedByScore = [...rankings].sort((a, b) => a.score - b.score);
+            const playerStats = game.players.map(p => {
+                const turns = p.turns || [];
+                const totalScore = turns.reduce((sum, t) => {
+                    const darts = Array.isArray(t.darts) ? t.darts : [t.darts || 0];
+                    return sum + darts.reduce((a, b) => a + b, 0);
+                }, 0);
+                const totalDarts = turns.reduce((sum, t) => {
+                    const darts = Array.isArray(t.darts) ? t.darts : [t.darts || 0];
+                    return sum + darts.length;
+                }, 0);
+                return {
+                    name: p.name,
+                    remaining: p.currentScore,
+                    winner: p.winner,
+                    finish_rank: p.finish_rank,
+                    turns: turns.length,
+                    darts: totalDarts,
+                    totalScore: totalScore,
+                    avgPerTurn: turns.length > 0 ? (totalScore / turns.length).toFixed(1) : '0'
+                };
+            }).sort((a, b) => (a.finish_rank || 999) - (b.finish_rank || 999));
 
             html += '<div class="detail-stats-grid">';
-            allPlayersSortedByScore.forEach((p, index) => {
+            playerStats.forEach((p, index) => {
                 const position = index + 1;
-                const isWinner = p.score === 0;
+                const isWinner = p.finish_rank === 1 || p.winner;
                 const startScore = game.game_type;
-                const progress = ((startScore - p.score) / startScore) * 100;
+                const progress = ((startScore - p.remaining) / startScore) * 100;
 
                 html += `
                     <div class="detail-player-card ${isWinner ? 'winner' : ''}">
                         <div class="detail-player-header">
                             <span class="detail-player-rank">${isWinner ? '🏆' : '#' + position}</span>
                             <span class="detail-player-name">${p.name}</span>
-                            <span class="score-badge">${p.score}</span>
                         </div>
                         <div class="detail-progress-bar">
                             <div class="detail-progress-fill" style="width: ${progress}%"></div>
@@ -970,7 +1144,7 @@ const UI = (() => {
                         <div class="detail-player-stats">
                             <div class="stat-item"><span class="stat-value">${p.darts}</span><span class="stat-label">Darts</span></div>
                             <div class="stat-item"><span class="stat-value">${p.turns}</span><span class="stat-label">Turns</span></div>
-                            <div class="stat-item"><span class="stat-value">${p.avgPerTurn || '0'}</span><span class="stat-label">Avg</span></div>
+                            <div class="stat-item"><span class="stat-value">${p.avgPerTurn}</span><span class="stat-label">Avg</span></div>
                         </div>
                     </div>
                 `;
@@ -978,29 +1152,50 @@ const UI = (() => {
             html += '</div>';
         }
 
-        // Compact turn history grid - score with progress bar
+        // Scoreboard - side-by-side columns per player with running totals
         const startScore = game.game_type;
-        html += '<div class="turn-history-section"><h4>Turn History</h4>';
-        game.players.forEach(player => {
-            html += `
-                <div class="player-turns-compact">
-                    <div class="player-turns-label">${player.winner ? '👑 ' : ''}${player.name}</div>
-                    <div class="turns-grid">
-                        ${player.turns.map((turn, i) => {
-                            const total = turn.darts.reduce((a, b) => a + b, 0);
-                            const progress = ((startScore - turn.remaining) / startScore) * 100;
-                            const isHighScore = total >= 100;
-                            const isBusted = turn.busted;
-                            return `<div class="turn-cell ${isBusted ? 'busted' : ''} ${isHighScore ? 'high-score' : ''}" title="→ ${turn.remaining} left${turn.darts.length > 1 ? ' (' + turn.darts.join('+') + ')' : ''}">
-                                <span class="turn-score">${total}</span>
-                                <div class="turn-progress"><div class="turn-progress-fill" style="width:${progress}%"></div></div>
-                            </div>`;
-                        }).join('')}
-                    </div>
-                </div>
-            `;
-        });
-        html += '</div>';
+        const maxRounds = Math.max(...game.players.map(p => (p.turns || []).length), 0);
+
+        if (maxRounds > 0) {
+            html += '<div class="turn-history-section"><h4>Scoreboard</h4>';
+            html += '<div class="scoreboard-table-wrapper"><table class="scoreboard-table">';
+
+            // Header row - player names
+            html += '<thead><tr><th class="scoreboard-round-col">Rnd</th>';
+            game.players.forEach(p => {
+                html += `<th class="scoreboard-player-col" colspan="2">${p.winner ? '👑 ' : ''}${p.name}</th>`;
+            });
+            html += '</tr>';
+            // Sub-header
+            html += '<tr><th></th>';
+            game.players.forEach(() => {
+                html += '<th class="scoreboard-sub-header">Score</th><th class="scoreboard-sub-header">Left</th>';
+            });
+            html += '</tr></thead>';
+
+            // Body - one row per round, latest on top
+            html += '<tbody>';
+            for (let r = maxRounds - 1; r >= 0; r--) {
+                html += `<tr class="${r === maxRounds - 1 ? 'scoreboard-latest' : ''}">`;
+                html += `<td class="scoreboard-round-num">${r + 1}</td>`;
+                game.players.forEach(p => {
+                    const turn = (p.turns || [])[r];
+                    if (turn) {
+                        const darts = Array.isArray(turn.darts) ? turn.darts : [turn.darts || 0];
+                        const total = darts.reduce((a, b) => a + b, 0);
+                        const isBusted = turn.busted;
+                        const isHighScore = total >= 100;
+                        const scoreClass = isBusted ? 'scoreboard-busted' : isHighScore ? 'scoreboard-high' : '';
+                        html += `<td class="scoreboard-score ${scoreClass}" title="${darts.length > 1 ? darts.join('+') : ''}">${total}${isBusted ? '*' : ''}</td>`;
+                        html += `<td class="scoreboard-remaining">${turn.remaining}</td>`;
+                    } else {
+                        html += '<td class="scoreboard-score">-</td><td class="scoreboard-remaining">-</td>';
+                    }
+                });
+                html += '</tr>';
+            }
+            html += '</tbody></table></div>';
+        }
 
         content.innerHTML = html;
     }
@@ -1008,12 +1203,21 @@ const UI = (() => {
     /**
      * Render leaderboard
      */
-    async function renderLeaderboard(metric = 'wins', timeFilter = 'all-time') {
+    async function renderLeaderboard(metric = 'wins', timeFilter = 'all-time', searchQuery = '') {
         const container = document.getElementById('leaderboard-content');
-        const rankings = await Stats.getLeaderboard(metric, timeFilter);
+        const podiumContainer = document.getElementById('leaderboard-podium');
+        
+        let rankings = await Stats.getLeaderboard(metric, timeFilter);
+
+        // Apply search filter if provided
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase().trim();
+            rankings = rankings.filter(r => r.name.toLowerCase().includes(query));
+        }
 
         if (rankings.length === 0) {
-            container.innerHTML = '<p class="placeholder">No games yet</p>';
+            if (podiumContainer) podiumContainer.innerHTML = '';
+            container.innerHTML = `<p class="placeholder">${searchQuery ? 'No players found matching "' + searchQuery + '"' : 'No games yet'}</p>`;
             return;
         }
 
@@ -1021,45 +1225,70 @@ const UI = (() => {
             'wins': 'Wins',
             'win-rate': 'Win Rate',
             'avg-turn': 'Avg/Turn',
-            '100s': '100+ Turns',
+            '100s': '100+',
             'max-turn': 'Top Turn'
         }[metric] || 'Wins';
 
-        // Build HTML with chart container first
-        let html = `
-            <div class="leaderboard-chart-section">
-                <div class="chart-container chart-container-leaderboard">
-                    <canvas id="leaderboardChart"></canvas>
-                </div>
-            </div>
-            <div class="leaderboard-entries">
-        `;
+        const formatMetricValue = (val, type) => {
+            if (type === 'win-rate') return `${parseFloat(val).toFixed(1)}%`;
+            if (type === 'avg-turn') return parseFloat(val).toFixed(2);
+            return val;
+        };
 
-        html += rankings.map((entry, index) => {
-            const rank = index + 1;
-            const rankClass = `rank-${rank}`;
-            let metricDisplay = '';
+        // Render Podium (Only if no search query)
+        if (podiumContainer) {
+            if (!searchQuery && rankings.length >= 3) {
+                const top3 = rankings.slice(0, 3);
+                // Order: 2, 1, 3 for visual balance
+                const displayOrder = [
+                    { ...top3[1], actualRank: 2, medal: '🥈' },
+                    { ...top3[0], actualRank: 1, medal: '🥇' },
+                    { ...top3[2], actualRank: 3, medal: '🥉' }
+                ];
+                
+                podiumContainer.innerHTML = displayOrder.map(player => `
+                    <div class="podium-card rank-${player.actualRank}" onclick="App.viewPlayerProfile('${player.name}')">
+                        <span class="podium-rank-icon">${player.medal}</span>
+                        <div>
+                            <div class="podium-name">${player.name}</div>
+                            <div class="podium-value">${formatMetricValue(player.metric, metric)}</div>
+                            <div class="podium-label">${metricLabel}</div>
+                        </div>
+                    </div>
+                `).join('');
+                podiumContainer.style.display = 'grid';
+            } else {
+                podiumContainer.innerHTML = '';
+                podiumContainer.style.display = 'none';
+            }
+        }
+
+        // Render List (Players from rank 4 onwards, or all if searching)
+        const listStart = (!searchQuery && rankings.length >= 3) ? 3 : 0;
+        const listPlayers = rankings.slice(listStart);
+
+        let html = '<div class="leaderboard-entries">';
+
+        html += listPlayers.map((entry, index) => {
+            const rank = listStart + index + 1;
+            const rankClass = rank <= 3 ? `rank-${rank}` : '';
+            let metricDisplay = formatMetricValue(entry.metric, metric);
             let secondaryStat = '';
 
             switch (metric) {
                 case 'wins':
-                    metricDisplay = entry.stats.gamesWon;
                     secondaryStat = `${entry.stats.winRate}% win rate`;
                     break;
                 case 'win-rate':
-                    metricDisplay = `${entry.stats.winRate}%`;
                     secondaryStat = `${entry.stats.gamesWon}/${entry.stats.gamesPlayed} wins`;
                     break;
                 case 'avg-turn':
-                    metricDisplay = entry.stats.avgPerTurn || entry.stats.avgPerDart || '0.00';
                     secondaryStat = `${entry.stats.gamesPlayed} games`;
                     break;
                 case '100s':
-                    metricDisplay = entry.stats.total100s || entry.fullStats?.total100s || 0;
                     secondaryStat = `${entry.stats.gamesPlayed} games`;
                     break;
                 case 'max-turn':
-                    metricDisplay = entry.stats.maxTurn || entry.fullStats?.maxTurn || 0;
                     secondaryStat = `${entry.stats.gamesPlayed} games`;
                     break;
             }
@@ -1078,17 +1307,16 @@ const UI = (() => {
                         <div class="leaderboard-stat-value">${metricDisplay}</div>
                         <div class="leaderboard-stat-label">${metricLabel}</div>
                     </div>
+                    <i data-lucide="chevron-right" class="leaderboard-arrow"></i>
                 </div>
             `;
         }).join('');
 
         html += '</div>';
         container.innerHTML = html;
-
-        // Render leaderboard chart after DOM update
-        setTimeout(() => {
-            Charts.createLeaderboardChart('leaderboardChart', rankings, metric);
-        }, 50);
+        
+        // Init Lucide icons
+        if (window.lucide) window.lucide.createIcons();
     }
 
     /**
@@ -1101,13 +1329,25 @@ const UI = (() => {
         content.innerHTML = '<div class="loading-charts"><p>Loading stats...</p></div>';
 
         // Fetch all data in parallel for better performance
-        const [stats, scoreDistribution, recentPerformance] = await Promise.all([
+        const [stats, scoreDistribution, recentPerformance, practiceStats] = await Promise.all([
             Stats.calculatePlayerStats(playerName),
             Stats.getScoreDistribution(playerName),
-            Stats.getRecentPerformance(playerName, 10)
+            Stats.getRecentPerformance(playerName, 10),
+            Stats.calculatePracticeStats(playerName)
         ]);
 
+        const initials = playerName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+        const avatarColor = getColorForName(playerName);
+
         let html = `
+            <div class="profile-header">
+                <div class="profile-avatar" style="background-color: ${avatarColor}">${initials}</div>
+                <div class="profile-header-info">
+                    <h2 class="profile-name">${playerName}</h2>
+                    <p class="profile-joindate">Joined ${stats.joinedDate}</p>
+                </div>
+            </div>
+
             <!-- Charts Section -->
             <div class="profile-charts-grid">
                 <!-- Win/Loss Chart -->
@@ -1152,19 +1392,19 @@ const UI = (() => {
                 <h3>Overall Stats</h3>
                 <div class="stats-matrix">
                     <div class="stat-box">
-                        <div class="stat-box-label">Games Played</div>
+                        <div class="stat-box-label"><i data-lucide="gamepad-2"></i>Games Played</div>
                         <div class="stat-box-value">${stats.gamesPlayed}</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-box-label">Wins</div>
+                        <div class="stat-box-label"><i data-lucide="trophy"></i>Wins</div>
                         <div class="stat-box-value">${stats.gamesWon}</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-box-label">Win Rate</div>
+                        <div class="stat-box-label"><i data-lucide="percent"></i>Win Rate</div>
                         <div class="stat-box-value">${stats.winRate}%</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-box-label">Avg/Turn</div>
+                        <div class="stat-box-label"><i data-lucide="bar-chart-2"></i>Avg/Turn</div>
                         <div class="stat-box-value">${stats.avgPerTurn || stats.avgPerDart}</div>
                     </div>
                 </div>
@@ -1174,33 +1414,57 @@ const UI = (() => {
                 <h3>Dart Stats</h3>
                 <div class="stats-matrix">
                     <div class="stat-box">
-                        <div class="stat-box-label">Total Darts</div>
-                        <div class="stat-box-value">${stats.totalDarts}</div>
+                        <div class="stat-box-label"><i data-lucide="sigma"></i>Total Score</div>
+                        <div class="stat-box-value">${(stats.totalScore || 0).toLocaleString()}</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-box-label">Max Dart</div>
-                        <div class="stat-box-value">${stats.maxDart}</div>
+                        <div class="stat-box-label"><i data-lucide="repeat"></i>Total Turns</div>
+                        <div class="stat-box-value">${stats.avgPerTurn && parseFloat(stats.avgPerTurn) > 0 ? Math.round(stats.totalScore / parseFloat(stats.avgPerTurn)) : 0}</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-box-label">Max Turn</div>
+                        <div class="stat-box-label"><i data-lucide="chevrons-up"></i>Max Turn</div>
                         <div class="stat-box-value">${stats.maxTurn}</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-box-label">100+ Turns</div>
+                        <div class="stat-box-label"><i data-lucide="target"></i>100+ Turns</div>
                         <div class="stat-box-value">${stats.total100s}</div>
                     </div>
                 </div>
             </div>
 
+            ${practiceStats ? `
+            <div class="profile-section">
+                <h3>Practice Stats</h3>
+                <div class="stats-matrix">
+                    <div class="stat-box">
+                        <div class="stat-box-label"><i data-lucide="dumbbell"></i>Sessions</div>
+                        <div class="stat-box-value">${practiceStats.gamesPlayed}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-box-label"><i data-lucide="repeat"></i>Total Turns</div>
+                        <div class="stat-box-value">${practiceStats.totalTurns}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-box-label"><i data-lucide="bar-chart-2"></i>Avg/Turn</div>
+                        <div class="stat-box-value">${practiceStats.avgPerTurn}</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-box-label"><i data-lucide="chevrons-up"></i>Max Turn</div>
+                        <div class="stat-box-value">${practiceStats.maxTurn}</div>
+                    </div>
+                </div>
+            </div>
+            ` : ''}
+
             <div class="profile-section">
                 <h3>High Scores</h3>
                 <div class="stats-matrix">
                     <div class="stat-box">
-                        <div class="stat-box-label">140+ Turns</div>
+                        <div class="stat-box-label"><i data-lucide="rocket"></i>140+ Turns</div>
                         <div class="stat-box-value">${stats.total140plus}</div>
                     </div>
                     <div class="stat-box">
-                        <div class="stat-box-label">Checkout %</div>
+                        <div class="stat-box-label"><i data-lucide="pie-chart"></i>Checkout %</div>
                         <div class="stat-box-value">${stats.checkoutPercentage}%</div>
                     </div>
                 </div>
@@ -1258,6 +1522,11 @@ const UI = (() => {
             if (Object.keys(stats.headToHead).length > 0) {
                 Charts.createHeadToHeadChart('headToHeadChart', stats.headToHead);
             }
+
+            // Initialize any new icons
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
         }, 50);
     }
 
@@ -1273,6 +1542,13 @@ const UI = (() => {
         // Update live rankings with current game standings
         const rankings = Game.getRankings(game);
         updateWinnersBoard(rankings, animate);
+    }
+
+    function flashScoreCard(playerIndex) {
+        const card = document.querySelector(`.player-score-card[data-player-index="${playerIndex}"]`);
+        if (!card) return;
+        card.classList.add('score-flash');
+        setTimeout(() => card.classList.remove('score-flash'), 600);
     }
 
     /**
@@ -1294,8 +1570,14 @@ const UI = (() => {
         if (pageHeader && !document.getElementById('spectator-indicator')) {
             const spectatorIndicator = document.createElement('div');
             spectatorIndicator.id = 'spectator-indicator';
-            spectatorIndicator.style.cssText = 'display: flex; align-items: center; gap: 8px; color: #7d5f92; font-weight: 600; font-size: 14px; padding: 8px 16px; background: rgba(125, 95, 146, 0.1); border-radius: 6px; margin-left: 16px;';
-            spectatorIndicator.innerHTML = '<span id="live-indicator" style="display: none;">🔴</span> 📺 Spectator Mode';
+            spectatorIndicator.className = 'spectator-badge';
+            spectatorIndicator.innerHTML = `
+                <div class="live-pulse-container">
+                    <span class="pulse-dot"></span>
+                    <span id="live-indicator-text">LIVE</span>
+                </div>
+                <span class="badge-text">Spectator Mode</span>
+            `;
             pageHeader.appendChild(spectatorIndicator);
         }
 
@@ -1311,10 +1593,13 @@ const UI = (() => {
      * Show/hide live indicator for spectator mode
      */
     function showLiveIndicator(isLive) {
-        const indicator = document.getElementById('live-indicator');
-        if (indicator) {
-            indicator.style.display = isLive ? 'inline' : 'none';
-            indicator.title = isLive ? 'Connected - Live updates enabled' : 'Disconnected';
+        const badge = document.querySelector('.spectator-badge');
+        const pulse = document.querySelector('.live-pulse-container');
+        
+        if (badge && pulse) {
+            pulse.style.display = isLive ? 'flex' : 'none';
+            badge.style.opacity = isLive ? '1' : '0.7';
+            badge.title = isLive ? 'Connected - Live updates enabled' : 'Disconnected';
         }
     }
 
@@ -1887,6 +2172,136 @@ const UI = (() => {
     }
 
     // ============================================================================
+    // PLAYER MANAGEMENT RENDERING
+    // ============================================================================
+
+    async function renderPlayersList() {
+        const container = document.getElementById('players-list-content');
+        if (!container) return;
+
+        try {
+            const playersObj = await Storage.getPlayers();
+            const players = Object.values(playersObj).sort((a, b) =>
+                a.name.localeCompare(b.name)
+            );
+            const deletedPlayers = await Storage.getDeletedPlayers();
+
+            if (players.length === 0 && deletedPlayers.length === 0) {
+                container.innerHTML = '<p class="placeholder">No players yet. Add a player or start a game!</p>';
+                return;
+            }
+
+            // Fetch recent games for form dots
+            const recentGames = await Storage.getCompletedGamesWithPlayerStats();
+            const playerFormMap = {};
+            (recentGames || []).forEach(game => {
+                (game.game_players || []).forEach(gp => {
+                    const name = gp.player?.name;
+                    if (!name) return;
+                    if (!playerFormMap[name]) playerFormMap[name] = [];
+                    playerFormMap[name].push({
+                        won: gp.is_winner,
+                        date: game.completed_at || game.created_at
+                    });
+                });
+            });
+            // Sort by date desc and keep last 5
+            Object.keys(playerFormMap).forEach(name => {
+                playerFormMap[name].sort((a, b) => new Date(b.date) - new Date(a.date));
+                playerFormMap[name] = playerFormMap[name].slice(0, 5);
+            });
+
+            let html = '';
+
+            if (players.length > 0) {
+                html += `<div class="player-management-list">${players.map(p => {
+                    const winRate = p.total_games_played > 0
+                        ? Math.round((p.total_games_won / p.total_games_played) * 100)
+                        : 0;
+                    const avgPerTurn = p.avg_per_turn ? parseFloat(p.avg_per_turn).toFixed(1) : '0';
+                    const maxTurn = p.max_turn_score || 0;
+                    const initials = p.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+                    const form = playerFormMap[p.name] || [];
+                    const formDots = form.length > 0
+                        ? form.map(f => `<span class="form-dot ${f.won ? 'form-win' : 'form-loss'}">${f.won ? 'W' : 'L'}</span>`).join('')
+                        : '';
+                    const lastPlayed = form.length > 0 ? getTimeAgo(form[0].date) : null;
+                    const escapedName = p.name.replace(/'/g, "\\'");
+                    const joinedAgo = p.created_at ? getTimeAgo(p.created_at) : null;
+                    const avatarColor = getColorForName(p.name);
+
+                    return `
+                        <div class="player-card" data-player-id="${p.id}" data-player-name="${p.name}">
+                            <div class="player-card-avatar" style="background-color: ${avatarColor}">${initials}</div>
+                            <div class="player-card-info">
+                                <div class="player-card-name">${p.name}</div>
+                                <div class="player-card-meta">${joinedAgo ? `Joined ${joinedAgo}` : 'New player'}${formDots ? ` <span class="form-dots">${formDots}</span>` : ''}</div>
+                                <div class="player-card-meta">${p.total_games_played} games${lastPlayed ? ` · Last: ${lastPlayed}` : ''}</div>
+                            </div>
+                            <div class="player-card-right">
+                                <div class="player-card-stats">
+                                    <span class="player-stat-value">${avgPerTurn}</span>
+                                    <span class="player-stat-label">AVG</span>
+                                </div>
+                                <div class="player-card-stats">
+                                    <span class="player-stat-value">${winRate}%</span>
+                                    <span class="player-stat-label">WINS</span>
+                                </div>
+                                <button class="btn-icon player-menu-btn" data-player-id="${p.id}" data-player-name="${p.name}" data-games="${p.total_games_played || 0}">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                                </button>
+                            </div>
+                        </div>`;
+                }).join('')}</div>`;
+            } else {
+                html += '<p class="placeholder">No active players. Add a player or start a game!</p>';
+            }
+
+            if (deletedPlayers.length > 0) {
+                html += `
+                    <div class="deleted-players-section">
+                        <button class="deleted-players-toggle" id="toggle-deleted-players">
+                            <span class="deleted-players-toggle-icon">&#9654;</span>
+                            Deleted Players (${deletedPlayers.length})
+                        </button>
+                        <div class="deleted-players-list" id="deleted-players-list" style="display: none;">
+                            ${deletedPlayers.sort((a, b) => a.name.localeCompare(b.name)).map(p => `
+                                <div class="deleted-player-card" data-player-id="${p.id}">
+                                    <div class="deleted-player-info">
+                                        <span class="deleted-player-name">${p.name}</span>
+                                        <span class="deleted-player-meta">${p.total_games_played || 0} games</span>
+                                    </div>
+                                    <button class="btn btn-secondary btn-small restore-player-btn" data-player-id="${p.id}" data-player-name="${p.name}">Restore</button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>`;
+            }
+
+            container.innerHTML = html;
+
+            // Wire up toggle for deleted players
+            const toggleBtn = document.getElementById('toggle-deleted-players');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', () => {
+                    const list = document.getElementById('deleted-players-list');
+                    const icon = toggleBtn.querySelector('.deleted-players-toggle-icon');
+                    if (list.style.display === 'none') {
+                        list.style.display = 'block';
+                        icon.innerHTML = '&#9660;';
+                    } else {
+                        list.style.display = 'none';
+                        icon.innerHTML = '&#9654;';
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Error rendering players list:', error);
+            container.innerHTML = '<p class="placeholder">Failed to load players</p>';
+        }
+    }
+
+    // ============================================================================
     // COMPETITION RENDERING FUNCTIONS
     // ============================================================================
 
@@ -1896,6 +2311,20 @@ const UI = (() => {
     async function renderCompetitionsHub(activeTab = 'tournaments') {
         const container = document.getElementById('competitions-content');
         if (!container) return;
+
+        // Show/hide appropriate create buttons
+        const createTournamentBtn = document.getElementById('create-tournament-btn');
+        const createLeagueBtn = document.getElementById('create-league-btn');
+
+        if (createTournamentBtn && createLeagueBtn) {
+            if (activeTab === 'tournaments') {
+                createTournamentBtn.style.display = 'inline-block';
+                createLeagueBtn.style.display = 'none';
+            } else {
+                createTournamentBtn.style.display = 'none';
+                createLeagueBtn.style.display = 'inline-block';
+            }
+        }
 
         container.innerHTML = '<p class="placeholder">Loading competitions...</p>';
 
@@ -1956,7 +2385,10 @@ const UI = (() => {
                             ? `<span>Winner: ${t.winner_name || 'TBD'}</span>`
                             : `<span>Matches: ${completedMatches}/${totalMatches}</span>`
                         }
-                        <span>${new Date(t.created_at).toLocaleDateString()}</span>
+                        <span style="display: flex; align-items: center; gap: 8px;">
+                            ${new Date(t.created_at).toLocaleDateString()}
+                            ${completedMatches === 0 ? `<button class="btn btn-danger btn-small delete-tournament-btn" data-tournament-id="${t.id}" data-tournament-name="${t.name}" onclick="event.stopPropagation(); App.confirmDeleteTournament(this.dataset.tournamentId, this.dataset.tournamentName)"><svg class="icon-bin" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M5 6v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>` : ''}
+                        </span>
                     </div>
                 </div>
             `;
@@ -2014,7 +2446,10 @@ const UI = (() => {
                             ? `<span>Winner: ${l.winner_name || 'TBD'}</span>`
                             : `<span>Progress: ${completedMatches}/${totalMatches} matches</span>`
                         }
-                        <span>${new Date(l.created_at).toLocaleDateString()}</span>
+                        <span style="display: flex; align-items: center; gap: 8px;">
+                            ${new Date(l.created_at).toLocaleDateString()}
+                            ${completedMatches === 0 ? `<button class="btn btn-danger btn-small delete-league-btn" data-league-id="${l.id}" data-league-name="${l.name}" onclick="event.stopPropagation(); App.confirmDeleteLeague(this.dataset.leagueId, this.dataset.leagueName)"><svg class="icon-bin" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M5 6v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>` : ''}
+                        </span>
                     </div>
                 </div>
             `;
@@ -2081,7 +2516,7 @@ const UI = (() => {
             html += renderTournamentRegistration(tournament);
         } else {
             // In progress or completed - show bracket with progress indicator
-            html += renderTournamentProgress(tournament);
+            // html += renderTournamentProgress(tournament); // This is redundant with the summary in the bracket
             html += renderTournamentBracket(tournament, bracket, totalRounds);
         }
 
@@ -2395,12 +2830,39 @@ const UI = (() => {
      * Render tournament bracket visualization with CSS connectors
      */
     function renderTournamentBracket(tournament, bracket, totalRounds) {
-        let html = '<div class="bracket-container">';
+        let html = '<div class="bracket-wrapper-outer">';
+
+        // Tournament Summary Stats
+        const completedMatches = tournament.matches.filter(m => m.status === 'completed').length;
+        const totalMatches = tournament.matches.length;
+        const progress = Math.round((completedMatches / totalMatches) * 100) || 0;
+
+        html += `
+            <div class="tournament-progress-summary">
+                <div class="summary-stat">
+                    <span class="stat-label">Progress</span>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" style="width: ${progress}%"></div>
+                    </div>
+                    <span class="stat-value">${progress}%</span>
+                </div>
+                <div class="summary-stat">
+                    <span class="stat-label">Matches</span>
+                    <span class="stat-value">${completedMatches} / ${totalMatches}</span>
+                </div>
+                <div class="summary-stat">
+                    <span class="stat-label">Players</span>
+                    <span class="stat-value">${tournament.participants.filter(p => !p.eliminated).length} Active / ${tournament.participants.length}</span>
+                </div>
+            </div>
+        `;
+
+        html += '<div class="bracket-container-horizontal">';
 
         // Winners bracket
         html += '<div class="bracket-section winners-bracket">';
-        html += '<h4>Winners Bracket</h4>';
-        html += '<div class="bracket-rounds">';
+        html += '<div class="section-header-row"><h4>Winners Bracket</h4></div>';
+        html += '<div class="bracket-rounds-horizontal">';
 
         for (let round = 1; round <= totalRounds; round++) {
             const roundMatches = bracket.winners[round] || [];
@@ -2408,9 +2870,9 @@ const UI = (() => {
             const isLastRound = round === totalRounds;
 
             html += `
-                <div class="bracket-round" data-round="${round}">
-                    <div class="round-header">${roundName}</div>
-                    <div class="round-matches bracket-round-wrapper">
+                <div class="bracket-round-column" data-round="${round}">
+                    <div class="round-header-pill">${roundName}</div>
+                    <div class="round-matches-container">
                         ${renderBracketRoundMatches(roundMatches, isLastRound)}
                     </div>
                 </div>
@@ -2422,8 +2884,8 @@ const UI = (() => {
         // Losers bracket (if double elimination)
         if (tournament.format === 'double_elimination' && Object.keys(bracket.losers).length > 0) {
             html += '<div class="bracket-section losers-bracket">';
-            html += '<h4>Losers Bracket</h4>';
-            html += '<div class="bracket-rounds">';
+            html += '<div class="section-header-row"><h4>Losers Bracket</h4></div>';
+            html += '<div class="bracket-rounds-horizontal">';
 
             const loserRounds = Object.keys(bracket.losers).sort((a, b) => a - b);
             const lastLoserRound = loserRounds[loserRounds.length - 1];
@@ -2432,9 +2894,9 @@ const UI = (() => {
                 const roundMatches = bracket.losers[round] || [];
                 const isLastRound = round === lastLoserRound;
                 html += `
-                    <div class="bracket-round" data-round="${round}">
-                        <div class="round-header">Losers Round ${round}</div>
-                        <div class="round-matches bracket-round-wrapper">
+                    <div class="bracket-round-column" data-round="${round}">
+                        <div class="round-header-pill secondary">LB Round ${round}</div>
+                        <div class="round-matches-container">
                             ${renderBracketRoundMatches(roundMatches, isLastRound)}
                         </div>
                     </div>
@@ -2446,13 +2908,18 @@ const UI = (() => {
             // Grand finals
             if (bracket.grandFinals) {
                 html += '<div class="bracket-section grand-finals">';
-                html += '<h4>Grand Finals</h4>';
-                html += `<div class="bracket-match-wrapper">${renderBracketMatch(bracket.grandFinals)}</div>`;
+                html += '<div class="section-header-row"><h4>Grand Finals</h4></div>';
+                html += `
+                    <div class="bracket-match-wrapper-centered">
+                        <div class="round-header-pill gold">Championship</div>
+                        ${renderBracketMatch(bracket.grandFinals)}
+                    </div>
+                `;
                 html += '</div>';
             }
         }
 
-        html += '</div>';
+        html += '</div></div>';
         return html;
     }
 
@@ -2503,6 +2970,17 @@ const UI = (() => {
     /**
      * Render a single bracket match
      */
+    /**
+     * Get player initials for avatar
+     */
+    function getPlayerInitials(name) {
+        if (!name || name === 'TBD') return '?';
+        return name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+    }
+
+    /**
+     * Render bracket match with enhanced visuals
+     */
     function renderBracketMatch(match) {
         const statusClass = match.status === 'completed' ? 'completed' :
                            match.status === 'ready' ? 'ready' :
@@ -2511,16 +2989,27 @@ const UI = (() => {
         // Add click handler for ready matches
         const clickHandler = match.status === 'ready' ? `onclick="App.loadTournament && document.querySelector('[data-match-id=\\'${match.id}\\'] .start-match-btn')?.click()"` : '';
 
+        const p1Initials = getPlayerInitials(match.player1_name);
+        const p2Initials = getPlayerInitials(match.player2_name);
+
         return `
             <div class="bracket-match ${statusClass}" data-match-id="${match.id}" ${clickHandler}>
-                <div class="match-slot ${match.winner_id === match.player1_id ? 'winner' : ''}">
-                    <span class="player-name">${match.player1_name || 'TBD'}</span>
+                <div class="match-slot ${match.winner_id === match.player1_id ? 'winner' : ''} ${!match.player1_id ? 'tbd' : ''}">
+                    <div class="player-info">
+                        <div class="player-avatar">${p1Initials}</div>
+                        <span class="player-name">${match.player1_name || 'TBD'}</span>
+                    </div>
                     ${match.status === 'completed' && match.winner_id === match.player1_id ? '<span class="winner-mark">✓</span>' : ''}
                 </div>
-                <div class="match-slot ${match.winner_id === match.player2_id ? 'winner' : ''}">
-                    <span class="player-name">${match.player2_name || 'TBD'}</span>
+                <div class="match-slot ${match.winner_id === match.player2_id ? 'winner' : ''} ${!match.player2_id ? 'tbd' : ''}">
+                    <div class="player-info">
+                        <div class="player-avatar">${p2Initials}</div>
+                        <span class="player-name">${match.player2_name || 'TBD'}</span>
+                    </div>
                     ${match.status === 'completed' && match.winner_id === match.player2_id ? '<span class="winner-mark">✓</span>' : ''}
                 </div>
+                ${match.status === 'ready' ? '<div class="match-status-badge">READY</div>' : ''}
+                ${match.status === 'in_progress' ? '<div class="match-status-badge in-progress">LIVE</div>' : ''}
             </div>
         `;
     }
@@ -2721,11 +3210,12 @@ const UI = (() => {
      */
     async function renderNewTournamentForm() {
         // Initialize player count handling
+        const bracketSizeSelect = document.getElementById('tournament-size');
         const playerCountInput = document.getElementById('tournament-player-count');
         const playerNamesContainer = document.getElementById('tournament-player-names');
         const playersGroup = document.getElementById('tournament-players-group');
 
-        if (!playerCountInput || !playerNamesContainer) return;
+        if (!playerCountInput || !playerNamesContainer || !bracketSizeSelect) return;
 
         // Get existing players for autocomplete
         let existingPlayers = [];
@@ -2734,6 +3224,31 @@ const UI = (() => {
             existingPlayers = Object.keys(players) || [];
         } catch (error) {
             console.warn('Could not load players for autocomplete:', error);
+        }
+
+        // Update Add Now options based on bracket size
+        function updateAddNowOptions() {
+            const size = parseInt(bracketSizeSelect.value);
+            
+            // Standard options up to bracket size
+            const options = [
+                { val: 0, label: 'Later' },
+                { val: 2, label: '2 Players' },
+                { val: 4, label: '4 Players' },
+                { val: 8, label: '8 Players' },
+                { val: 16, label: '16 Players' },
+                { val: 32, label: '32 Players' }
+            ];
+
+            playerCountInput.innerHTML = options
+                .filter(opt => opt.val <= size)
+                .map(opt => `<option value="${opt.val}" ${opt.val == size ? 'selected' : ''}>${opt.label}</option>`)
+                .join('');
+            
+            // Set current value to match bracket size by default
+            playerCountInput.value = size;
+
+            updatePlayerInputs();
         }
 
         async function updatePlayerInputs() {
@@ -2775,6 +3290,10 @@ const UI = (() => {
         }
 
         playerCountInput.addEventListener('change', updatePlayerInputs);
+        bracketSizeSelect.addEventListener('change', updateAddNowOptions);
+        
+        // Initialize
+        updateAddNowOptions();
         await updatePlayerInputs();
     }
 
@@ -2867,6 +3386,7 @@ const UI = (() => {
         renderLeaderboard,
         renderPlayerProfile,
         updateActiveGameUI,
+        flashScoreCard,
         renderSpectatorGame,
         updateWinnersBoard,
         showLiveIndicator,
@@ -2876,6 +3396,8 @@ const UI = (() => {
         openComparisonModal,
         closeComparisonModal,
         runPlayerComparison,
+        // Player management
+        renderPlayersList,
         // Competition functions
         renderCompetitionsHub,
         renderTournamentsList,

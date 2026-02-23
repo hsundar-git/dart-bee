@@ -127,6 +127,12 @@ const App = (() => {
         setupStatsEvents();
         setupModalEvents();
         setupCompetitionEvents();
+        setupPlayerManagementEvents();
+        setupPracticeEvents();
+        setupDeleteEvents();
+
+        // Initialize Lucide icons on start
+        initIcons();
     }
 
     /**
@@ -195,8 +201,16 @@ const App = (() => {
                     await loadLeague(routeInfo.leagueId);
                     break;
 
+                case 'practice':
+                    await loadPractice();
+                    break;
+
                 case 'stats':
                     await loadStats();
+                    break;
+
+                case 'players':
+                    await loadPlayers();
                     break;
 
                 default:
@@ -347,31 +361,30 @@ const App = (() => {
             });
         }
 
+        // Desktop nav links
         document.querySelectorAll('.nav-link').forEach(link => {
             link.addEventListener('click', (e) => {
                 const page = e.currentTarget.dataset.page;
-                switch (page) {
-                    case 'home':
-                        Router.navigate('home');
-                        break;
-                    case 'new-game':
-                        Router.navigate('new-game');
-                        break;
-                    case 'history':
-                        Router.navigate('history');
-                        break;
-                    case 'leaderboard':
-                        Router.navigate('leaderboard');
-                        break;
-                    case 'competitions':
-                        Router.navigate('competitions');
-                        break;
-                    case 'stats':
-                        Router.navigate('stats');
-                        break;
-                }
+                Router.navigate(page);
             });
         });
+
+        // Mobile bottom nav links
+        document.querySelectorAll('.mobile-nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                const page = e.currentTarget.dataset.page;
+                Router.navigate(page);
+            });
+        });
+    }
+
+    /**
+     * Initialize Lucide icons
+     */
+    function initIcons() {
+        if (window.lucide) {
+            window.lucide.createIcons();
+        }
     }
 
     /**
@@ -383,22 +396,114 @@ const App = (() => {
             Router.navigate('new-game');
         });
 
+        // Hero Quick Action cards
+        document.querySelectorAll('.quick-action-card').forEach(card => {
+            card.addEventListener('click', async () => {
+                if (card.dataset.quickGame) {
+                    const gameType = parseInt(card.dataset.quickGame);
+                    await showQuickPlayerSelect(gameType);
+                } else if (card.dataset.navigate) {
+                    Router.navigate(card.dataset.navigate);
+                }
+            });
+        });
+
         // Quick start buttons (501, 301)
         document.querySelectorAll('.btn-quick[data-game]').forEach(btn => {
             btn.addEventListener('click', async () => {
-                const gameType = btn.dataset.game;
-                await startQuickGame(parseInt(gameType));
+                const gameType = parseInt(btn.dataset.game);
+                await showQuickPlayerSelect(gameType);
             });
         });
     }
 
     /**
+     * Show quick player selection modal
+     */
+    async function showQuickPlayerSelect(gameType) {
+        UI.showLoader('Loading players...');
+        try {
+            const playersMap = await Storage.getPlayers();
+            const playerNames = Object.keys(playersMap).sort();
+
+            if (playerNames.length === 0) {
+                UI.hideLoader();
+                UI.showToast('No players found. Please add players first.', 'warning');
+                Router.navigate('players');
+                return;
+            }
+
+            const content = document.createElement('div');
+            content.className = 'quick-player-modal';
+            content.innerHTML = `
+                <p class="text-muted mb-lg">Select 2 or more players to start a ${gameType} game.</p>
+                <div class="player-selection-grid" id="quick-player-grid">
+                    ${playerNames.map(name => `
+                        <div class="player-select-card" data-name="${name}">
+                            <div class="player-select-avatar">👤</div>
+                            <div class="player-select-name">${name}</div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="selection-footer">
+                    <div class="selection-count"><span id="selected-count">0</span> players selected (min 2)</div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary btn-small" id="cancel-quick-btn">Cancel</button>
+                        <button class="btn btn-primary btn-small" id="start-quick-btn" disabled title="Select at least 2 players">Start Game</button>
+                    </div>
+                </div>
+            `;
+
+            UI.showModal(content, `Quick ${gameType} - Select Players`);
+            UI.hideLoader();
+
+            const grid = document.getElementById('quick-player-grid');
+            const startBtn = document.getElementById('start-quick-btn');
+            const cancelBtn = document.getElementById('cancel-quick-btn');
+            const countEl = document.getElementById('selected-count');
+            const selectedPlayers = new Set();
+
+            grid.querySelectorAll('.player-select-card').forEach(card => {
+                card.onclick = () => {
+                    const name = card.dataset.name;
+                    if (selectedPlayers.has(name)) {
+                        selectedPlayers.delete(name);
+                        card.classList.remove('selected');
+                    } else {
+                        selectedPlayers.add(name);
+                        card.classList.add('selected');
+                    }
+
+                    const count = selectedPlayers.size;
+                    countEl.textContent = count;
+                    startBtn.disabled = count < 2;
+                };
+            });
+
+            startBtn.onclick = async () => {
+                UI.hideModal();
+                await startQuickGame(gameType, Array.from(selectedPlayers));
+            };
+
+            cancelBtn.onclick = () => UI.hideModal();
+
+        } catch (error) {
+            console.error('Error loading players for quick select:', error);
+            UI.hideLoader();
+            UI.showToast('Failed to load players', 'error');
+        }
+    }
+
+    /**
      * Start a quick game with default settings
      */
-    async function startQuickGame(gameType = 501) {
+    async function startQuickGame(gameType = 501, selectedPlayers = []) {
+        // Fallback if no players provided (shouldn't happen with modal)
+        const players = selectedPlayers.length > 0 ? selectedPlayers : ['Player 1', 'Player 2'];
+
         currentGame = Game.createGame({
-            playerCount: 2,
-            playerNames: ['Player 1', 'Player 2'],
+            playerCount: players.length,
+            playerNames: players,
             gameType: gameType,
             winBelow: true, // Amateur mode by default
             scoringMode: 'per-turn'
@@ -426,7 +531,7 @@ const App = (() => {
                 const playerNames = Array.from(document.querySelectorAll('#player-names-container input'))
                     .map(input => input.value);
 
-                let gameType = document.getElementById('game-type').value;
+                let gameType = document.querySelector('input[name="gameType"]:checked')?.value || '501';
                 if (gameType === 'custom') {
                     gameType = document.getElementById('custom-points').value;
                 }
@@ -474,16 +579,23 @@ const App = (() => {
     function setupHistoryEvents() {
         const playerFilter = document.getElementById('history-player-filter');
         const sortSelect = document.getElementById('history-sort');
+        const showPracticeCheck = document.getElementById('history-show-practice');
 
         if (playerFilter) {
             playerFilter.addEventListener('input', async (e) => {
-                await UI.renderGameHistory(e.target.value, sortSelect.value, 1);
+                await UI.renderGameHistory(e.target.value, sortSelect.value, 1, showPracticeCheck?.checked);
             });
         }
 
         if (sortSelect) {
             sortSelect.addEventListener('change', async (e) => {
-                await UI.renderGameHistory(playerFilter?.value || '', e.target.value, 1);
+                await UI.renderGameHistory(playerFilter?.value || '', e.target.value, 1, showPracticeCheck?.checked);
+            });
+        }
+
+        if (showPracticeCheck) {
+            showPracticeCheck.addEventListener('change', async (e) => {
+                await UI.renderGameHistory(playerFilter?.value || '', sortSelect.value, 1, e.target.checked);
             });
         }
 
@@ -494,11 +606,12 @@ const App = (() => {
         if (paginationPrev) {
             paginationPrev.addEventListener('click', async (e) => {
                 e.preventDefault();
-                const currentPage = UI.getPaginationState().currentPage;
+                const state = UI.getPaginationState();
                 await UI.renderGameHistory(
-                    UI.getPaginationState().filter,
-                    UI.getPaginationState().sortOrder,
-                    currentPage - 1
+                    state.filter,
+                    state.sortOrder,
+                    state.currentPage - 1,
+                    state.includePractice
                 );
             });
         }
@@ -506,11 +619,12 @@ const App = (() => {
         if (paginationNext) {
             paginationNext.addEventListener('click', async (e) => {
                 e.preventDefault();
-                const currentPage = UI.getPaginationState().currentPage;
+                const state = UI.getPaginationState();
                 await UI.renderGameHistory(
-                    UI.getPaginationState().filter,
-                    UI.getPaginationState().sortOrder,
-                    currentPage + 1
+                    state.filter,
+                    state.sortOrder,
+                    state.currentPage + 1,
+                    state.includePractice
                 );
             });
         }
@@ -525,6 +639,23 @@ const App = (() => {
      * Setup leaderboard events
      */
     function setupLeaderboardEvents() {
+        const searchInput = document.getElementById('leaderboard-search');
+        let searchTimeout = null;
+
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value;
+                const metric = document.querySelector('.leaderboard-tabs .tab-btn.active')?.dataset.tab || 'avg-turn';
+                const filter = document.querySelector('.time-filters .filter-btn.active')?.dataset.filter || 'all-time';
+
+                // Debounce search
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    UI.renderLeaderboard(metric, filter, query);
+                }, 300);
+            });
+        }
+
         // Time filters - navigate to update URL
         document.querySelectorAll('.time-filters .filter-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -547,8 +678,9 @@ const App = (() => {
         const backBtn = document.getElementById('back-to-leaderboard');
         if (backBtn) {
             backBtn.addEventListener('click', () => {
-                const metric = document.querySelector('.leaderboard-tabs .tab-btn.active')?.dataset.tab || 'wins';
+                const metric = document.querySelector('.leaderboard-tabs .tab-btn.active')?.dataset.tab || 'avg-turn';
                 const filter = document.querySelector('.time-filters .filter-btn.active')?.dataset.filter || 'all-time';
+                console.log('[back] Navigating to leaderboard:', metric, filter);
                 Router.navigate('leaderboard', { metric, filter });
             });
         }
@@ -796,6 +928,11 @@ const App = (() => {
         await UI.renderStatsPage();
     }
 
+    async function loadPlayers() {
+        UI.showPage('players-page');
+        await UI.renderPlayersList();
+    }
+
     /**
      * Setup stats page events
      */
@@ -835,6 +972,230 @@ const App = (() => {
     }
 
     /**
+     * Setup player management events
+     */
+    function setupPlayerManagementEvents() {
+        const showBtn = document.getElementById('show-add-player-btn');
+        const saveBtn = document.getElementById('save-player-btn');
+        const cancelBtn = document.getElementById('cancel-add-player-btn');
+        const nameInput = document.getElementById('new-player-name');
+        const form = document.getElementById('add-player-form');
+        const errorEl = document.getElementById('add-player-error');
+
+        if (showBtn) {
+            showBtn.addEventListener('click', () => {
+                form.classList.remove('hidden');
+                showBtn.classList.add('hidden');
+                nameInput.value = '';
+                errorEl.classList.add('hidden');
+                nameInput.focus();
+            });
+        }
+
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', () => {
+                form.classList.add('hidden');
+                showBtn.classList.remove('hidden');
+            });
+        }
+
+        if (saveBtn) {
+            saveBtn.addEventListener('click', async () => {
+                const name = nameInput.value.trim();
+                if (!name) {
+                    errorEl.textContent = 'Please enter a player name';
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
+                const result = await Storage.addPlayer(name);
+                if (result.error) {
+                    errorEl.textContent = result.error;
+                    errorEl.classList.remove('hidden');
+                    return;
+                }
+                form.classList.add('hidden');
+                showBtn.classList.remove('hidden');
+                UI.showToast(`Player "${name}" added`, 'success');
+                await UI.renderPlayersList();
+            });
+        }
+
+        if (nameInput) {
+            nameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    saveBtn.click();
+                }
+            });
+        }
+
+        // Delegate clicks on players list
+        const listContent = document.getElementById('players-list-content');
+        if (listContent) {
+            listContent.addEventListener('click', async (e) => {
+                // Three-dot menu button
+                const menuBtn = e.target.closest('.player-menu-btn');
+                if (menuBtn) {
+                    e.stopPropagation();
+                    showPlayerMenu(menuBtn);
+                    return;
+                }
+
+                // Restore button (deleted players)
+                const restoreBtn = e.target.closest('.restore-player-btn');
+                if (restoreBtn) {
+                    const result = await Storage.restorePlayer(restoreBtn.dataset.playerId);
+                    if (result.error) {
+                        UI.showToast(result.error, 'error');
+                    } else {
+                        UI.showToast(`Player "${restoreBtn.dataset.playerName}" restored`, 'success');
+                        await UI.renderPlayersList();
+                    }
+                    return;
+                }
+
+                // Player card navigation
+                const playerCard = e.target.closest('.player-card');
+                if (playerCard) {
+                    const playerName = playerCard.dataset.playerName;
+                    if (playerName) {
+                        Router.navigate('player-profile', { playerName });
+                    }
+                }
+            });
+
+            // Close player menu when clicking outside
+            document.addEventListener('click', () => {
+                const openMenu = document.querySelector('.player-dropdown-menu');
+                if (openMenu) openMenu.remove();
+            });
+        }
+    }
+
+    function showPlayerMenu(menuBtn) {
+        // Remove any existing menu
+        const existing = document.querySelector('.player-dropdown-menu');
+        if (existing) existing.remove();
+
+        const playerId = menuBtn.dataset.playerId;
+        const playerName = menuBtn.dataset.playerName;
+
+        const menu = document.createElement('div');
+        menu.className = 'player-dropdown-menu';
+        menu.innerHTML = `
+            <button class="player-dropdown-item" data-action="rename">Rename</button>
+            <button class="player-dropdown-item player-dropdown-item-danger" data-action="delete">Delete</button>
+        `;
+
+        // Position relative to the button
+        menuBtn.style.position = 'relative';
+        menuBtn.appendChild(menu);
+
+        // Handle menu item clicks
+        menu.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const action = e.target.dataset.action;
+            menu.remove();
+            if (action === 'rename') {
+                showRenameModal(playerId, playerName);
+            } else if (action === 'delete') {
+                showDeleteConfirm(playerId, playerName);
+            }
+        });
+    }
+
+    function showRenameModal(playerId, currentName) {
+        const content = document.createElement('div');
+        content.innerHTML = `
+            <div class="form-group">
+                <label for="rename-input">New Name</label>
+                <input type="text" id="rename-input" class="form-input" value="${currentName}" maxlength="30">
+            </div>
+            <p id="rename-error" class="form-error hidden"></p>
+            <div style="display: flex; gap: 8px; margin-top: 16px;">
+                <button class="btn btn-primary" id="confirm-rename-btn">Rename</button>
+                <button class="btn btn-secondary" id="cancel-rename-btn">Cancel</button>
+            </div>
+        `;
+        UI.showModal(content, `Rename Player`);
+
+        const input = document.getElementById('rename-input');
+        const errorEl = document.getElementById('rename-error');
+        input.select();
+
+        document.getElementById('confirm-rename-btn').addEventListener('click', async () => {
+            const newName = input.value.trim();
+            if (!newName) {
+                errorEl.textContent = 'Please enter a name';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+            if (newName === currentName) {
+                UI.hideModal();
+                return;
+            }
+            const result = await Storage.renamePlayer(playerId, newName);
+            if (result.error) {
+                errorEl.textContent = result.error;
+                errorEl.classList.remove('hidden');
+                return;
+            }
+            UI.hideModal();
+            UI.showToast(`Player renamed to "${newName}"`, 'success');
+            await UI.renderPlayersList();
+        });
+
+        document.getElementById('cancel-rename-btn').addEventListener('click', () => {
+            UI.hideModal();
+        });
+
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                document.getElementById('confirm-rename-btn').click();
+            }
+        });
+    }
+
+    function showDeleteConfirm(playerId, playerName) {
+        const content = document.createElement('div');
+        content.innerHTML = `
+            <p>Are you sure you want to delete <strong>${playerName}</strong>?</p>
+            <p style="color: var(--color-text-light); font-size: 0.85rem;">The player will be removed from the player list and leaderboards. Game history will be preserved.</p>
+            <div style="display: flex; gap: 8px; margin-top: 16px;">
+                <button class="btn btn-danger" id="confirm-delete-btn">Delete</button>
+                <button class="btn btn-secondary" id="cancel-delete-btn">Cancel</button>
+            </div>
+        `;
+        UI.showModal(content, 'Delete Player');
+
+        document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
+            const result = await Storage.deletePlayer(playerId);
+            if (result.error) {
+                UI.hideModal();
+                UI.showToast(result.error, 'error');
+                return;
+            }
+            UI.hideModal();
+            UI.showToast(`Player "${playerName}" deleted`, 'success');
+            await UI.renderPlayersList();
+        });
+
+        document.getElementById('cancel-delete-btn').addEventListener('click', () => {
+            UI.hideModal();
+        });
+    }
+
+    /**
+     * Provide haptic feedback if supported
+     */
+    function triggerHaptic(pattern = 50) {
+        if (typeof navigator !== 'undefined' && navigator.vibrate) {
+            navigator.vibrate(pattern);
+        }
+    }
+
+    /**
      * Submit current turn
      */
     async function submitTurn() {
@@ -869,10 +1230,14 @@ const App = (() => {
 
             if (!result.success) {
                 UI.showToast(result.error, 'error');
+                triggerHaptic([100, 50, 100]); // "Bust" pattern
                 endOperation();
                 UI.hideLoader();
                 return;
             }
+
+            // Calculate turn total for haptic feedback
+            const turnTotal = darts.reduce((a, b) => parseInt(a) + parseInt(b), 0);
 
             console.log('Saving game to database...');
             await Storage.updateGame(currentGame.id, currentGame);
@@ -884,6 +1249,7 @@ const App = (() => {
 
             // Player finished - update winners board
             if (result.playerFinished) {
+                triggerHaptic([50, 100, 50, 100, 200]); // "Celebration" pattern
                 // Always animate when player finishes
                 UI.updateWinnersBoard(result.allRankings, true);
                 UI.showToast(`🏆 ${result.playerFinished} finished in ${['1st', '2nd', '3rd'][result.finishRank - 1] || result.finishRank + 'th'} place!`, 'success');
@@ -902,9 +1268,19 @@ const App = (() => {
                     }, 800);
                 }
             } else {
+                // Haptic for high score
+                if (turnTotal >= 100) {
+                    triggerHaptic(100);
+                } else {
+                    triggerHaptic(40); // Subtle "click"
+                }
+
                 // Update rankings: animate only if round completed
                 UI.updateWinnersBoard(result.allRankings || Game.getRankings(currentGame), roundCompleted);
-                UI.updateActiveGameUI(currentGame, false); // Don't animate on regular update
+                // Flash the previous player's score card
+                const prevIdx = (currentGame.current_player_index - 1 + currentGame.players.length) % currentGame.players.length;
+                UI.updateActiveGameUI(currentGame, false);
+                UI.flashScoreCard(prevIdx);
                 UI.showToast(`Next: ${result.nextPlayer}`, 'info');
             }
         } catch (error) {
@@ -939,13 +1315,25 @@ const App = (() => {
     async function endGame() {
         if (!currentGame) return;
 
-        if (confirm('Are you sure you want to end this game?')) {
+        const content = document.createElement('div');
+        content.innerHTML = `
+            <p>Are you sure you want to end this game?</p>
+            <p style="color: var(--color-text-light); font-size: 0.85rem;">The game will be marked as completed with current scores.</p>
+            <div style="display: flex; gap: 8px; margin-top: 16px;">
+                <button class="btn btn-danger" id="confirm-end-game-btn">End Game</button>
+                <button class="btn btn-secondary" id="cancel-end-game-btn">Cancel</button>
+            </div>
+        `;
+        UI.showModal(content, 'End Game');
+        document.getElementById('confirm-end-game-btn').addEventListener('click', async () => {
             Game.endGame(currentGame);
             await Storage.updateGame(currentGame.id, currentGame);
             currentGame = null;
+            UI.hideModal();
             UI.showToast('Game ended', 'info');
             Router.navigate('home');
-        }
+        });
+        document.getElementById('cancel-end-game-btn').addEventListener('click', () => UI.hideModal());
     }
 
     /**
@@ -1272,7 +1660,7 @@ const App = (() => {
         const name = document.getElementById('tournament-name').value;
         const format = document.getElementById('tournament-format').value;
         const maxPlayers = parseInt(document.getElementById('tournament-size').value);
-        const gameType = parseInt(document.getElementById('tournament-game-type').value);
+        const gameType = parseInt(document.querySelector('input[name="tournament-game-type"]:checked')?.value || '501');
         const scoringMode = document.querySelector('input[name="tournament-scoring-mode"]:checked')?.value || 'per-turn';
 
         const tournament = Tournament.create({
@@ -1891,6 +2279,222 @@ const App = (() => {
         }
     }
 
+    // ============================================================================
+    // PRACTICE MODE
+    // ============================================================================
+
+    async function loadPractice() {
+        UI.showPage('practice-page');
+        UI.showLoader('Loading players...');
+
+        try {
+            const playersMap = await Storage.getPlayers();
+            const playerNames = Object.keys(playersMap).sort();
+            const container = document.getElementById('practice-player-selection');
+            const countEl = document.getElementById('practice-selected-count');
+            const startBtn = document.getElementById('start-free-practice-btn');
+
+            if (container) {
+                if (playerNames.length === 0) {
+                    container.innerHTML = '<p class="placeholder-small">No players found. <a href="#/players">Add players</a></p>';
+                    if (startBtn) startBtn.disabled = true;
+                } else {
+                    const selectedPlayers = new Set();
+                    container.innerHTML = playerNames.map(name => `
+                        <div class="player-select-card compact" data-name="${name}">
+                            <div class="player-select-avatar">👤</div>
+                            <div class="player-select-name">${name}</div>
+                        </div>
+                    `).join('');
+
+                    container.querySelectorAll('.player-select-card').forEach(card => {
+                        card.onclick = () => {
+                            const name = card.dataset.name;
+                            if (selectedPlayers.has(name)) {
+                                selectedPlayers.delete(name);
+                                card.classList.remove('selected');
+                            } else {
+                                selectedPlayers.add(name);
+                                card.classList.add('selected');
+                            }
+
+                            const count = selectedPlayers.size;
+                            if (countEl) countEl.textContent = count;
+                            if (startBtn) {
+                                startBtn.disabled = count === 0;
+                                // Store selected players on the button
+                                startBtn.dataset.players = Array.from(selectedPlayers).join(',');
+                            }
+                        };
+                    });
+                }
+            }
+            initIcons();
+        } catch (error) {
+            console.error('Error loading players for practice:', error);
+            UI.showToast('Failed to load players', 'error');
+        } finally {
+            UI.hideLoader();
+        }
+    }
+
+    function setupPracticeEvents() {
+        // Free practice start
+        const startFreeBtn = document.getElementById('start-free-practice-btn');
+        if (startFreeBtn) {
+            startFreeBtn.onclick = async () => {
+                const playerNames = startFreeBtn.dataset.players?.split(',').filter(p => p) || [];
+                const target = parseInt(document.getElementById('practice-target')?.value || '501');
+                const scoringMode = document.getElementById('practice-scoring-mode')?.value || 'per-dart';
+
+                if (playerNames.length === 0) {
+                    UI.showToast('Select at least one player', 'warning');
+                    return;
+                }
+
+                await startPracticeGame(playerNames, target, scoringMode, true);
+            };
+        }
+
+        // Drill buttons
+        document.querySelectorAll('.start-drill-btn').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const drill = btn.dataset.drill;
+                const playersMap = await Storage.getPlayers();
+                const playerNames = Object.keys(playersMap).sort();
+
+                if (playerNames.length === 0) {
+                    UI.showToast('Add a player first!', 'warning');
+                    Router.navigate('players');
+                    return;
+                }
+
+                // For drills, we use the quick player selection modal to pick ONE player
+                const content = document.createElement('div');
+                content.className = 'quick-player-modal';
+                content.innerHTML = `
+                    <p class="text-muted mb-lg">Select a player for this drill.</p>
+                    <div class="player-selection-grid" id="drill-player-grid">
+                        ${playerNames.map(name => `
+                            <div class="player-select-card compact" data-name="${name}">
+                                <div class="player-select-avatar">👤</div>
+                                <div class="player-select-name">${name}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+
+                UI.showModal(content, `Start Drill`);
+
+                const grid = document.getElementById('drill-player-grid');
+                grid.querySelectorAll('.player-select-card').forEach(card => {
+                    card.onclick = async () => {
+                        const playerName = card.dataset.name;
+                        UI.hideModal();
+                        
+                        switch (drill) {
+                            case 'ton80':
+                                await startPracticeGame([playerName], 501, 'per-turn', true);
+                                break;
+                            case 'doubles':
+                                await startPracticeGame([playerName], 301, 'per-dart', false);
+                                break;
+                            case 'highscore':
+                                await startPracticeGame([playerName], 501, 'per-turn', true);
+                                break;
+                        }
+                    };
+                });
+            });
+        });
+    }
+
+    async function startPracticeGame(playerNames, gameType, scoringMode, winBelow) {
+        UI.showLoader('Starting practice...');
+        currentGame = Game.createGame({
+            playerCount: playerNames.length,
+            playerNames: playerNames,
+            gameType: gameType,
+            winBelow: winBelow,
+            scoringMode: scoringMode,
+            is_practice: true
+        });
+
+        try {
+            await Storage.saveGame(currentGame);
+            Router.navigate('game', { gameId: currentGame.id });
+        } catch (error) {
+            console.error('Failed to start practice game:', error);
+            UI.showToast('Failed to start practice game', 'error');
+        } finally {
+            UI.hideLoader();
+        }
+    }
+
+    function setupDeleteEvents() {
+        // Event handlers are inline onclick calling App.confirmDelete* methods
+    }
+
+    function confirmDeleteGame(gameId) {
+        const content = document.createElement('div');
+        content.innerHTML = `
+            <p>Delete this game?</p>
+            <p style="color: var(--color-text-light); font-size: 0.85rem;">This cannot be undone.</p>
+            <div style="display: flex; gap: 8px; margin-top: 16px;">
+                <button class="btn btn-danger" id="confirm-delete-btn">Delete</button>
+                <button class="btn btn-secondary" id="cancel-delete-btn">Cancel</button>
+            </div>
+        `;
+        UI.showModal(content, 'Delete Game');
+        document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
+            await Storage.deleteGame(gameId);
+            UI.hideModal();
+            UI.showToast('Game deleted', 'success');
+            handleRoute(Router.parseUrl());
+        });
+        document.getElementById('cancel-delete-btn').addEventListener('click', () => UI.hideModal());
+    }
+
+    function confirmDeleteTournament(id, name) {
+        const content = document.createElement('div');
+        content.innerHTML = `
+            <p>Delete tournament <strong>${name}</strong>?</p>
+            <p style="color: var(--color-text-light); font-size: 0.85rem;">This cannot be undone.</p>
+            <div style="display: flex; gap: 8px; margin-top: 16px;">
+                <button class="btn btn-danger" id="confirm-delete-btn">Delete</button>
+                <button class="btn btn-secondary" id="cancel-delete-btn">Cancel</button>
+            </div>
+        `;
+        UI.showModal(content, 'Delete Tournament');
+        document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
+            await Storage.deleteTournament(id);
+            UI.hideModal();
+            UI.showToast('Tournament deleted', 'success');
+            handleRoute(Router.parseUrl());
+        });
+        document.getElementById('cancel-delete-btn').addEventListener('click', () => UI.hideModal());
+    }
+
+    function confirmDeleteLeague(id, name) {
+        const content = document.createElement('div');
+        content.innerHTML = `
+            <p>Delete league <strong>${name}</strong>?</p>
+            <p style="color: var(--color-text-light); font-size: 0.85rem;">This cannot be undone.</p>
+            <div style="display: flex; gap: 8px; margin-top: 16px;">
+                <button class="btn btn-danger" id="confirm-delete-btn">Delete</button>
+                <button class="btn btn-secondary" id="cancel-delete-btn">Cancel</button>
+            </div>
+        `;
+        UI.showModal(content, 'Delete League');
+        document.getElementById('confirm-delete-btn').addEventListener('click', async () => {
+            await Storage.deleteLeague(id);
+            UI.hideModal();
+            UI.showToast('League deleted', 'success');
+            handleRoute(Router.parseUrl());
+        });
+        document.getElementById('cancel-delete-btn').addEventListener('click', () => UI.hideModal());
+    }
+
     // Public API
     return {
         init,
@@ -1910,6 +2514,8 @@ const App = (() => {
         undoTurn,
         endGame,
         shareGame,
+        loadPlayers,
+        loadPractice,
         // Competition functions
         loadCompetitions,
         loadTournament,
@@ -1921,7 +2527,11 @@ const App = (() => {
         // State persistence
         getActiveCompetition,
         saveTournamentState,
-        saveLeagueState
+        saveLeagueState,
+        // Delete actions (called from inline onclick)
+        confirmDeleteGame,
+        confirmDeleteTournament,
+        confirmDeleteLeague
     };
 })();
 
@@ -1944,6 +2554,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (!Storage.sb) {
             throw new Error('Storage.sb not available after initialization');
+        }
+
+        // Show info toast if running in local mode
+        if (Storage.isLocal()) {
+            console.log('Running in local/offline mode');
+            UI.showToast('Running in offline mode (localStorage)', 'info');
         }
 
         console.log('Storage ready, initializing app...');

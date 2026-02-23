@@ -78,6 +78,14 @@ const Router = (() => {
             }
         }
 
+        if (pathParts[0] === 'players') {
+            return { route: 'players' };
+        }
+
+        if (pathParts[0] === 'practice') {
+            return { route: 'practice' };
+        }
+
         if (pathParts[0] === 'stats') {
             return { route: 'stats' };
         }
@@ -138,8 +146,14 @@ const Router = (() => {
             case 'league-match':
                 path = `#/league/${params.leagueId}/match/${params.matchId}`;
                 break;
+            case 'practice':
+                path = '#/practice';
+                break;
             case 'stats':
                 path = '#/stats';
+                break;
+            case 'players':
+                path = '#/players';
                 break;
         }
 

@@ -69,6 +69,47 @@
     --transition-fast: 150ms ease-in-out;
     --transition-base: 200ms ease-in-out;
     --transition-slow: 300ms ease-in-out;
+
+    /* Chart/widget colors (overridden in dark mode) */
+    --color-surface: #ffffff;
+    --color-card-bg: #ffffff;
+    --color-chart-grid: rgba(0, 0, 0, 0.05);
+    --color-chart-text: #2d2d2d;
+    --color-chart-text-light: #6b7280;
+    --color-ring-bg: #e5e7eb;
+    --color-heatmap-empty: #ebedf0;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --color-primary-dark: #8eaed4;
+        --color-primary: #7ba3d4;
+        --color-primary-light: #a8c4e0;
+        --color-accent-green: #5ec987;
+        --color-accent-yellow: #d4b44a;
+        --color-accent-blue: #6aa8d4;
+        --color-accent-red: #d47e7e;
+        --color-bg-light: #1a1a2e;
+        --color-bg-lighter: #16213e;
+        --color-bg-hover: #1f2b47;
+        --color-text-dark: #d4d4d4;
+        --color-text-light: #8892a4;
+        --color-border: #2d3a52;
+        --color-surface: #1a1a2e;
+        --color-card-bg: #16213e;
+        --color-chart-grid: rgba(255, 255, 255, 0.08);
+        --color-chart-text: #d4d4d4;
+        --color-chart-text-light: #8892a4;
+        --color-ring-bg: #374151;
+        --color-heatmap-empty: #2d3748;
+        --color-success: #5ec987;
+        --color-warning: #d4b44a;
+        --color-error: #d47e7e;
+        --color-info: #6aa8d4;
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+        --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
+    }
 }
 
 /* ============================
@@ -114,6 +155,21 @@ body {
     box-shadow: var(--shadow-sm);
 }
 
+/* Glassmorphism Navigation */
+.glass-nav {
+    background: rgba(255, 255, 255, 0.75) !important;
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border-bottom: 1px solid rgba(27, 45, 74, 0.1);
+}
+
+@media (prefers-color-scheme: dark) {
+    .glass-nav {
+        background: rgba(22, 33, 62, 0.75) !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+}
+
 .navbar {
     display: flex;
     justify-content: space-between;
@@ -131,10 +187,6 @@ body {
     color: var(--color-primary-dark);
 }
 
-.bee-icon {
-    font-size: var(--font-size-2xl);
-}
-
 .navbar-logo {
     width: 44px;
     height: 44px;
@@ -147,36 +199,87 @@ body {
 
 .navbar-nav {
     display: flex;
-    gap: var(--spacing-md);
+    gap: var(--spacing-xs);
 }
 
 .nav-link {
     display: flex;
     align-items: center;
-    gap: var(--spacing-xs);
+    gap: var(--spacing-sm);
     padding: var(--spacing-sm) var(--spacing-md);
     background: none;
-    border: 2px solid transparent;
+    border: none;
     color: var(--color-text-light);
     font-size: var(--font-size-sm);
-    font-weight: var(--font-weight-medium);
+    font-weight: var(--font-weight-semibold);
     cursor: pointer;
     border-radius: var(--radius-md);
-    transition: all var(--transition-base);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nav-link i.icon {
+    width: 20px;
+    height: 20px;
+    stroke-width: 2.25px;
 }
 
 .nav-link:hover {
     color: var(--color-primary);
-    background-color: rgba(27, 45, 74, 0.05);
+    background-color: rgba(27, 45, 74, 0.06);
 }
 
 .nav-link.active {
     color: var(--color-primary);
-    border-bottom-color: var(--color-primary);
+    background-color: rgba(27, 45, 74, 0.08);
 }
 
-.nav-link .icon {
-    font-size: var(--font-size-lg);
+/* Mobile Bottom Nav */
+.mobile-bottom-nav {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    z-index: 1000;
+    padding: 0 var(--spacing-md);
+    border-top: 1px solid var(--color-border);
+    border-bottom: none;
+    justify-content: space-around;
+    align-items: center;
+}
+
+.mobile-nav-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    color: var(--color-text-light);
+    font-size: 10px;
+    font-weight: var(--font-weight-bold);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex: 1;
+    height: 100%;
+    transition: all 0.2s ease;
+}
+
+.mobile-nav-link i {
+    width: 22px;
+    height: 22px;
+    stroke-width: 2px;
+}
+
+.mobile-nav-link.active {
+    color: var(--color-primary);
+}
+
+.mobile-nav-link.active i {
+    stroke-width: 2.5px;
+    transform: translateY(-2px);
 }
 
 .main-content {
@@ -185,6 +288,7 @@ body {
     max-width: 1200px;
     margin: 0 auto;
     width: 100%;
+    padding-bottom: var(--spacing-2xl); /* Add space for bottom nav on mobile */
 }
 
 .page {
@@ -416,6 +520,19 @@ input[type="checkbox"] {
    BUTTONS
    ============================ */
 
+.label-hint {
+    font-size: 0.75rem;
+    color: var(--color-primary-light);
+    cursor: help;
+    margin-left: 4px;
+    font-weight: normal;
+    transition: color 0.2s;
+}
+
+.label-hint:hover {
+    color: var(--color-primary);
+}
+
 .btn {
     padding: var(--spacing-md) var(--spacing-lg);
     border: none;
@@ -498,7 +615,16 @@ input[type="checkbox"] {
 
 .home-grid {
     display: grid;
-    gap: var(--spacing-2xl);
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--spacing-xl);
+    margin-bottom: var(--spacing-2xl);
+}
+
+@media (max-width: 768px) {
+    .home-grid {
+        grid-template-columns: 1fr;
+        gap: var(--spacing-md);
+    }
 }
 
 .home-grid-2col {
@@ -574,31 +700,20 @@ input[type="checkbox"] {
 
 @media (max-width: 1024px) {
     .navbar {
-        padding: var(--spacing-md);
-        gap: var(--spacing-md);
-    }
-
-    .navbar-brand {
-        font-size: var(--font-size-md);
+        padding: var(--spacing-sm) var(--spacing-md);
     }
 
     .navbar-nav {
-        width: 100%;
-        gap: var(--spacing-sm);
+        display: none; /* Hide desktop nav links */
     }
 
-    .nav-link {
-        flex: 1;
-        justify-content: center;
-        padding: var(--spacing-sm);
-    }
-
-    .nav-link .label {
-        display: none;
+    .mobile-bottom-nav {
+        display: flex; /* Show mobile bottom nav */
     }
 
     .main-content {
         padding: var(--spacing-md);
+        padding-bottom: 80px; /* Space for bottom nav */
     }
 
     .page-header {

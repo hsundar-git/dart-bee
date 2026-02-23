@@ -5,7 +5,7 @@
  */
 
 const Charts = (() => {
-    // Theme colors from the app's design system
+    // Theme colors from the app's design system (light mode defaults)
     const COLORS = {
         primary: '#7d5f92',
         primaryDark: '#573e69',
@@ -19,6 +19,26 @@ const Charts = (() => {
         background: '#f8f9fa',
         white: '#ffffff'
     };
+
+    // Muted accent colors for dark mode (less eye strain)
+    const DARK_COLORS = {
+        primary: '#9d7fb2',
+        primaryDark: '#7d5f92',
+        primaryLight: '#b89fca',
+        accentGreen: '#5ec987',
+        accentYellow: '#d4b44a',
+        accentBlue: '#6aa8d4',
+        accentRed: '#d47e7e',
+        textDark: '#d4d4d4',
+        textLight: '#8892a4',
+        background: '#1a1a2e',
+        white: '#16213e'
+    };
+
+    // Get the right color set for current theme
+    function C() {
+        return isDarkMode() ? DARK_COLORS : COLORS;
+    }
 
     // Chart color palette for multiple data series
     const CHART_PALETTE = [
@@ -35,10 +55,21 @@ const Charts = (() => {
     // Store chart instances for cleanup
     const chartInstances = {};
 
+    // Detect dark mode for theme-dependent UI (grid, text, tooltips)
+    function isDarkMode() {
+        return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
     /**
      * Get default chart options with consistent styling
      */
     function getDefaultOptions(type) {
+        const dark = isDarkMode();
+        const c = C();
+        const textColor = c.textDark;
+        const textMutedColor = c.textLight;
+        const gridColor = dark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.05)';
+
         const baseOptions = {
             responsive: true,
             maintainAspectRatio: false,
@@ -49,11 +80,13 @@ const Charts = (() => {
                             family: 'Inter, sans-serif',
                             size: 12
                         },
-                        color: COLORS.textDark
+                        color: textColor
                     }
                 },
                 tooltip: {
                     backgroundColor: COLORS.primaryDark,
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
                     titleFont: {
                         family: 'Inter, sans-serif',
                         size: 13
@@ -72,26 +105,26 @@ const Charts = (() => {
             baseOptions.scales = {
                 x: {
                     grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
+                        color: gridColor
                     },
                     ticks: {
                         font: {
                             family: 'Inter, sans-serif',
                             size: 11
                         },
-                        color: COLORS.textLight
+                        color: textMutedColor
                     }
                 },
                 y: {
                     grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
+                        color: gridColor
                     },
                     ticks: {
                         font: {
                             family: 'Inter, sans-serif',
                             size: 11
                         },
-                        color: COLORS.textLight
+                        color: textMutedColor
                     }
                 }
             };
@@ -116,6 +149,7 @@ const Charts = (() => {
      */
     function createWinLossChart(canvasId, wins, losses) {
         destroyChart(canvasId);
+        const c = C();
 
         const canvas = document.getElementById(canvasId);
         if (!canvas) return null;
@@ -124,9 +158,8 @@ const Charts = (() => {
         const total = wins + losses;
 
         if (total === 0) {
-            // Draw "No data" message
             ctx.font = '14px Inter, sans-serif';
-            ctx.fillStyle = COLORS.textLight;
+            ctx.fillStyle = c.textLight;
             ctx.textAlign = 'center';
             ctx.fillText('No games played yet', canvas.width / 2, canvas.height / 2);
             return null;
@@ -149,8 +182,8 @@ const Charts = (() => {
                 labels: ['Wins', 'Losses'],
                 datasets: [{
                     data: [wins, losses],
-                    backgroundColor: [COLORS.accentGreen, COLORS.accentRed],
-                    borderColor: [COLORS.white, COLORS.white],
+                    backgroundColor: [c.accentGreen, c.accentRed],
+                    borderColor: [c.white, c.white],
                     borderWidth: 2,
                     hoverOffset: 4
                 }]
@@ -167,6 +200,7 @@ const Charts = (() => {
      */
     function createPerformanceChart(canvasId, recentGames) {
         destroyChart(canvasId);
+        const c = C();
 
         const canvas = document.getElementById(canvasId);
         if (!canvas) return null;
@@ -175,7 +209,7 @@ const Charts = (() => {
 
         if (!recentGames || recentGames.length === 0) {
             ctx.font = '14px Inter, sans-serif';
-            ctx.fillStyle = COLORS.textLight;
+            ctx.fillStyle = c.textLight;
             ctx.textAlign = 'center';
             ctx.fillText('No game history available', canvas.width / 2, canvas.height / 2);
             return null;
@@ -193,7 +227,7 @@ const Charts = (() => {
             display: true,
             text: 'Avg per Turn',
             font: { family: 'Inter, sans-serif', size: 11 },
-            color: COLORS.textLight
+            color: c.textLight
         };
 
         chartInstances[canvasId] = new Chart(ctx, {
@@ -203,12 +237,12 @@ const Charts = (() => {
                 datasets: [{
                     label: 'Avg per Turn',
                     data: avgPerTurn,
-                    borderColor: COLORS.primary,
+                    borderColor: c.primary,
                     backgroundColor: 'rgba(125, 95, 146, 0.1)',
                     fill: true,
                     tension: 0.3,
-                    pointBackgroundColor: COLORS.primary,
-                    pointBorderColor: COLORS.white,
+                    pointBackgroundColor: c.primary,
+                    pointBorderColor: c.white,
                     pointBorderWidth: 2,
                     pointRadius: 5,
                     pointHoverRadius: 7
@@ -226,6 +260,7 @@ const Charts = (() => {
      */
     function createScoreDistributionChart(canvasId, scoreData) {
         destroyChart(canvasId);
+        const c = C();
 
         const canvas = document.getElementById(canvasId);
         if (!canvas) return null;
@@ -234,7 +269,7 @@ const Charts = (() => {
 
         if (!scoreData || Object.values(scoreData).every(v => v === 0)) {
             ctx.font = '14px Inter, sans-serif';
-            ctx.fillStyle = COLORS.textLight;
+            ctx.fillStyle = c.textLight;
             ctx.textAlign = 'center';
             ctx.fillText('No score data available', canvas.width / 2, canvas.height / 2);
             return null;
@@ -256,13 +291,13 @@ const Charts = (() => {
             display: true,
             text: 'Turn Count',
             font: { family: 'Inter, sans-serif', size: 11 },
-            color: COLORS.textLight
+            color: c.textLight
         };
         options.scales.x.title = {
             display: true,
             text: 'Turn Score Range',
             font: { family: 'Inter, sans-serif', size: 11 },
-            color: COLORS.textLight
+            color: c.textLight
         };
 
         chartInstances[canvasId] = new Chart(ctx, {
@@ -273,11 +308,11 @@ const Charts = (() => {
                     label: 'Turns',
                     data: data,
                     backgroundColor: [
-                        COLORS.textLight,
-                        COLORS.accentBlue,
-                        COLORS.accentYellow,
-                        COLORS.primary,
-                        COLORS.accentGreen
+                        c.textLight,
+                        c.accentBlue,
+                        c.accentYellow,
+                        c.primary,
+                        c.accentGreen
                     ],
                     borderRadius: 6,
                     borderSkipped: false
@@ -294,6 +329,7 @@ const Charts = (() => {
      */
     function createHeadToHeadChart(canvasId, headToHeadData) {
         destroyChart(canvasId);
+        const c = C();
 
         const canvas = document.getElementById(canvasId);
         if (!canvas) return null;
@@ -302,7 +338,7 @@ const Charts = (() => {
 
         if (!headToHeadData || Object.keys(headToHeadData).length === 0) {
             ctx.font = '14px Inter, sans-serif';
-            ctx.fillStyle = COLORS.textLight;
+            ctx.fillStyle = c.textLight;
             ctx.textAlign = 'center';
             ctx.fillText('No head-to-head data', canvas.width / 2, canvas.height / 2);
             return null;
@@ -327,13 +363,13 @@ const Charts = (() => {
                     {
                         label: 'Wins',
                         data: wins,
-                        backgroundColor: COLORS.accentGreen,
+                        backgroundColor: c.accentGreen,
                         borderRadius: 4
                     },
                     {
                         label: 'Losses',
                         data: losses,
-                        backgroundColor: COLORS.accentRed,
+                        backgroundColor: c.accentRed,
                         borderRadius: 4
                     }
                 ]
@@ -350,6 +386,7 @@ const Charts = (() => {
      */
     function createLeaderboardChart(canvasId, leaderboardData, metric) {
         destroyChart(canvasId);
+        const c = C();
 
         const canvas = document.getElementById(canvasId);
         if (!canvas) return null;
@@ -358,7 +395,7 @@ const Charts = (() => {
 
         if (!leaderboardData || leaderboardData.length === 0) {
             ctx.font = '14px Inter, sans-serif';
-            ctx.fillStyle = COLORS.textLight;
+            ctx.fillStyle = c.textLight;
             ctx.textAlign = 'center';
             ctx.fillText('No leaderboard data', canvas.width / 2, canvas.height / 2);
             return null;
@@ -383,13 +420,16 @@ const Charts = (() => {
             display: true,
             text: metricLabels[metric] || 'Value',
             font: { family: 'Inter, sans-serif', size: 11 },
-            color: COLORS.textLight
+            color: c.textLight
         };
 
         // Use gradient colors based on rank
+        const dark = isDarkMode();
         const backgroundColors = top5.map((_, i) => {
             const opacity = 1 - (i * 0.15);
-            return `rgba(125, 95, 146, ${opacity})`;
+            return dark
+                ? `rgba(157, 127, 178, ${opacity})`
+                : `rgba(125, 95, 146, ${opacity})`;
         });
 
         chartInstances[canvasId] = new Chart(ctx, {
@@ -414,6 +454,7 @@ const Charts = (() => {
      */
     function createStatsRadarChart(canvasId, stats) {
         destroyChart(canvasId);
+        const c = C();
 
         const canvas = document.getElementById(canvasId);
         if (!canvas) return null;
@@ -422,7 +463,7 @@ const Charts = (() => {
 
         if (!stats) {
             ctx.font = '14px Inter, sans-serif';
-            ctx.fillStyle = COLORS.textLight;
+            ctx.fillStyle = c.textLight;
             ctx.textAlign = 'center';
             ctx.fillText('No stats available', canvas.width / 2, canvas.height / 2);
             return null;
@@ -439,6 +480,9 @@ const Charts = (() => {
             normalizeValue(parseFloat(stats.checkoutPercentage) || 0, 100)
         ];
 
+        const dark = isDarkMode();
+        const gridColor = dark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.1)';
+
         const options = {
             responsive: true,
             maintainAspectRatio: false,
@@ -447,7 +491,9 @@ const Charts = (() => {
                     display: false
                 },
                 tooltip: {
-                    backgroundColor: COLORS.primaryDark,
+                    backgroundColor: c.primaryDark,
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
                     callbacks: {
                         label: function(context) {
                             const labels = ['Win Rate', 'Avg/Turn', '100+', 'Max Turn', 'Checkout %'];
@@ -471,14 +517,17 @@ const Charts = (() => {
                         display: false
                     },
                     grid: {
-                        color: 'rgba(0, 0, 0, 0.1)'
+                        color: gridColor
+                    },
+                    angleLines: {
+                        color: gridColor
                     },
                     pointLabels: {
                         font: {
                             family: 'Inter, sans-serif',
                             size: 11
                         },
-                        color: COLORS.textDark
+                        color: c.textDark
                     }
                 }
             }
@@ -491,10 +540,10 @@ const Charts = (() => {
                 datasets: [{
                     data: data,
                     backgroundColor: 'rgba(125, 95, 146, 0.2)',
-                    borderColor: COLORS.primary,
+                    borderColor: c.primary,
                     borderWidth: 2,
-                    pointBackgroundColor: COLORS.primary,
-                    pointBorderColor: COLORS.white,
+                    pointBackgroundColor: c.primary,
+                    pointBorderColor: c.white,
                     pointBorderWidth: 2,
                     pointRadius: 4
                 }]
