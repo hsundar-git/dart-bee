@@ -5,34 +5,34 @@
  */
 
 const Charts = (() => {
-    // Theme colors from the app's design system (light mode defaults)
+    // Theme colors — dark-only gold palette
     const COLORS = {
-        primary: '#7d5f92',
-        primaryDark: '#573e69',
-        primaryLight: '#9d7fb2',
-        accentGreen: '#2de36d',
-        accentYellow: '#facf39',
-        accentBlue: '#38a2ff',
-        accentRed: '#ff6b6b',
-        textDark: '#2d2d2d',
-        textLight: '#6b7280',
-        background: '#f8f9fa',
-        white: '#ffffff'
+        primary: '#FFD700',
+        primaryDark: '#0d1117',
+        primaryLight: '#ffe566',
+        accentGreen: '#3fb950',
+        accentYellow: '#FFD700',
+        accentBlue: '#58a6ff',
+        accentRed: '#f85149',
+        textDark: '#e6edf3',
+        textLight: '#8b949e',
+        background: '#0d1117',
+        white: '#161b22'
     };
 
-    // Muted accent colors for dark mode (less eye strain)
+    // Same values (single dark mode)
     const DARK_COLORS = {
-        primary: '#9d7fb2',
-        primaryDark: '#7d5f92',
-        primaryLight: '#b89fca',
-        accentGreen: '#5ec987',
-        accentYellow: '#d4b44a',
-        accentBlue: '#6aa8d4',
-        accentRed: '#d47e7e',
-        textDark: '#d4d4d4',
-        textLight: '#8892a4',
-        background: '#1a1a2e',
-        white: '#16213e'
+        primary: '#FFD700',
+        primaryDark: '#0d1117',
+        primaryLight: '#ffe566',
+        accentGreen: '#3fb950',
+        accentYellow: '#FFD700',
+        accentBlue: '#58a6ff',
+        accentRed: '#f85149',
+        textDark: '#e6edf3',
+        textLight: '#8b949e',
+        background: '#0d1117',
+        white: '#161b22'
     };
 
     // Get the right color set for current theme
@@ -40,24 +40,24 @@ const Charts = (() => {
         return isDarkMode() ? DARK_COLORS : COLORS;
     }
 
-    // Chart color palette for multiple data series
+    // Chart color palette for multiple data series (gold-first)
     const CHART_PALETTE = [
-        COLORS.primary,
-        COLORS.accentGreen,
-        COLORS.accentBlue,
-        COLORS.accentYellow,
-        COLORS.accentRed,
-        COLORS.primaryLight,
+        '#FFD700',
+        '#3fb950',
+        '#58a6ff',
+        '#f85149',
+        '#ffe566',
+        '#a371f7',
         '#ff9f43',
-        '#54a0ff'
+        '#79c0ff'
     ];
 
     // Store chart instances for cleanup
     const chartInstances = {};
 
-    // Detect dark mode for theme-dependent UI (grid, text, tooltips)
+    // Always dark mode
     function isDarkMode() {
-        return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        return true;
     }
 
     /**
@@ -77,22 +77,22 @@ const Charts = (() => {
                 legend: {
                     labels: {
                         font: {
-                            family: 'Inter, sans-serif',
+                            family: 'Barlow, sans-serif',
                             size: 12
                         },
                         color: textColor
                     }
                 },
                 tooltip: {
-                    backgroundColor: COLORS.primaryDark,
+                    backgroundColor: '#161b22',
                     titleColor: '#ffffff',
                     bodyColor: '#ffffff',
                     titleFont: {
-                        family: 'Inter, sans-serif',
+                        family: 'Barlow, sans-serif',
                         size: 13
                     },
                     bodyFont: {
-                        family: 'Inter, sans-serif',
+                        family: 'Barlow, sans-serif',
                         size: 12
                     },
                     padding: 10,
@@ -109,7 +109,7 @@ const Charts = (() => {
                     },
                     ticks: {
                         font: {
-                            family: 'Inter, sans-serif',
+                            family: 'Barlow, sans-serif',
                             size: 11
                         },
                         color: textMutedColor
@@ -121,7 +121,7 @@ const Charts = (() => {
                     },
                     ticks: {
                         font: {
-                            family: 'Inter, sans-serif',
+                            family: 'Barlow, sans-serif',
                             size: 11
                         },
                         color: textMutedColor
@@ -158,7 +158,7 @@ const Charts = (() => {
         const total = wins + losses;
 
         if (total === 0) {
-            ctx.font = '14px Inter, sans-serif';
+            ctx.font = '14px Barlow, sans-serif';
             ctx.fillStyle = c.textLight;
             ctx.textAlign = 'center';
             ctx.fillText('No games played yet', canvas.width / 2, canvas.height / 2);
@@ -208,7 +208,7 @@ const Charts = (() => {
         const ctx = canvas.getContext('2d');
 
         if (!recentGames || recentGames.length === 0) {
-            ctx.font = '14px Inter, sans-serif';
+            ctx.font = '14px Barlow, sans-serif';
             ctx.fillStyle = c.textLight;
             ctx.textAlign = 'center';
             ctx.fillText('No game history available', canvas.width / 2, canvas.height / 2);
@@ -226,7 +226,7 @@ const Charts = (() => {
         options.scales.y.title = {
             display: true,
             text: 'Avg per Turn',
-            font: { family: 'Inter, sans-serif', size: 11 },
+            font: { family: 'Barlow, sans-serif', size: 11 },
             color: c.textLight
         };
 
@@ -238,7 +238,7 @@ const Charts = (() => {
                     label: 'Avg per Turn',
                     data: avgPerTurn,
                     borderColor: c.primary,
-                    backgroundColor: 'rgba(125, 95, 146, 0.1)',
+                    backgroundColor: 'rgba(255, 215, 0, 0.1)',
                     fill: true,
                     tension: 0.3,
                     pointBackgroundColor: c.primary,
@@ -268,7 +268,7 @@ const Charts = (() => {
         const ctx = canvas.getContext('2d');
 
         if (!scoreData || Object.values(scoreData).every(v => v === 0)) {
-            ctx.font = '14px Inter, sans-serif';
+            ctx.font = '14px Barlow, sans-serif';
             ctx.fillStyle = c.textLight;
             ctx.textAlign = 'center';
             ctx.fillText('No score data available', canvas.width / 2, canvas.height / 2);
@@ -290,13 +290,13 @@ const Charts = (() => {
         options.scales.y.title = {
             display: true,
             text: 'Turn Count',
-            font: { family: 'Inter, sans-serif', size: 11 },
+            font: { family: 'Barlow, sans-serif', size: 11 },
             color: c.textLight
         };
         options.scales.x.title = {
             display: true,
             text: 'Turn Score Range',
-            font: { family: 'Inter, sans-serif', size: 11 },
+            font: { family: 'Barlow, sans-serif', size: 11 },
             color: c.textLight
         };
 
@@ -337,7 +337,7 @@ const Charts = (() => {
         const ctx = canvas.getContext('2d');
 
         if (!headToHeadData || Object.keys(headToHeadData).length === 0) {
-            ctx.font = '14px Inter, sans-serif';
+            ctx.font = '14px Barlow, sans-serif';
             ctx.fillStyle = c.textLight;
             ctx.textAlign = 'center';
             ctx.fillText('No head-to-head data', canvas.width / 2, canvas.height / 2);
@@ -394,7 +394,7 @@ const Charts = (() => {
         const ctx = canvas.getContext('2d');
 
         if (!leaderboardData || leaderboardData.length === 0) {
-            ctx.font = '14px Inter, sans-serif';
+            ctx.font = '14px Barlow, sans-serif';
             ctx.fillStyle = c.textLight;
             ctx.textAlign = 'center';
             ctx.fillText('No leaderboard data', canvas.width / 2, canvas.height / 2);
@@ -419,7 +419,7 @@ const Charts = (() => {
         options.scales.x.title = {
             display: true,
             text: metricLabels[metric] || 'Value',
-            font: { family: 'Inter, sans-serif', size: 11 },
+            font: { family: 'Barlow, sans-serif', size: 11 },
             color: c.textLight
         };
 
@@ -428,8 +428,8 @@ const Charts = (() => {
         const backgroundColors = top5.map((_, i) => {
             const opacity = 1 - (i * 0.15);
             return dark
-                ? `rgba(157, 127, 178, ${opacity})`
-                : `rgba(125, 95, 146, ${opacity})`;
+                ? `rgba(255, 215, 0, ${opacity})`
+                : `rgba(255, 215, 0, ${opacity})`;
         });
 
         chartInstances[canvasId] = new Chart(ctx, {
@@ -462,7 +462,7 @@ const Charts = (() => {
         const ctx = canvas.getContext('2d');
 
         if (!stats) {
-            ctx.font = '14px Inter, sans-serif';
+            ctx.font = '14px Barlow, sans-serif';
             ctx.fillStyle = c.textLight;
             ctx.textAlign = 'center';
             ctx.fillText('No stats available', canvas.width / 2, canvas.height / 2);
@@ -524,7 +524,7 @@ const Charts = (() => {
                     },
                     pointLabels: {
                         font: {
-                            family: 'Inter, sans-serif',
+                            family: 'Barlow, sans-serif',
                             size: 11
                         },
                         color: c.textDark
@@ -539,7 +539,7 @@ const Charts = (() => {
                 labels: ['Win Rate', 'Avg/Turn', '100+', 'Max Turn', 'Checkout %'],
                 datasets: [{
                     data: data,
-                    backgroundColor: 'rgba(125, 95, 146, 0.2)',
+                    backgroundColor: 'rgba(255, 215, 0, 0.2)',
                     borderColor: c.primary,
                     borderWidth: 2,
                     pointBackgroundColor: c.primary,

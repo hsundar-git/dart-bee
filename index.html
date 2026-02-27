@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Track your dart games with detailed statistics, leaderboards, and real-time scoring. Perfect for casual players and competitive leagues.">
-    <meta name="theme-color" content="#1B2D4A">
+    <meta name="theme-color" content="#0d1117">
 
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
@@ -21,7 +21,7 @@
     <title>Dart Bee - Game Score Manager</title>
 
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Barlow:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Stylesheets -->
     <link rel="stylesheet" href="styles/main.css?v=20260221.2600">
@@ -36,7 +36,7 @@
     <!-- PWA & Icons -->
     <link rel="manifest" href="manifest.json">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐝</text></svg>">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%231B2D4A'/><text y='140' x='90' font-size='120' text-anchor='middle'>🎯</text></svg>">
+    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%230d1117'/><text y='140' x='90' font-size='120' text-anchor='middle'>🎯</text></svg>">
 
     <!-- Supabase & Configuration -->
     <!-- Load Supabase Client Library -->
@@ -48,23 +48,7 @@
     <!-- Load Configuration (contains API credentials) -->
     <script src="scripts/config.js?v=20260221.2600"></script>
 </head>
-<body class="honeycomb-bg">
-     <!-- Splash Screen -->
-    <div id="splash-screen" class="splash-screen">
-        <div class="splash-content">
-            <img src="img.png" alt="Dart Bee Logo" class="splash-logo">
-            <h1 class="splash-title">Dart Bee</h1>
-            <div class="splash-tagline">Ready. Aim. Score!</div>
-        </div>
-    </div>
-
-    <!-- Ambient Bee Decorations -->
-    <div class="ambient-bees">
-        <div class="ambient-bee">🐝</div>
-        <div class="ambient-bee">🐝</div>
-        <div class="ambient-bee">🐝</div>
-    </div>
-
+<body>
     <div id="app" class="app-container">
         <!-- Navigation Bar -->
         <nav class="navbar glass-nav">
@@ -377,6 +361,7 @@
                 <div class="page-header">
                     <h1 id="game-title">Game</h1>
                     <div style="display: flex; gap: 10px; align-items: center;">
+                        <button class="sound-toggle-btn" id="sound-toggle-btn" title="Toggle sound effects">🔇</button>
                         <button class="btn btn-success btn-small" id="share-game-btn">📤 Share Game</button>
                         <button class="btn btn-secondary btn-small" id="end-game-btn">End Game</button>
                     </div>
@@ -924,6 +909,8 @@
     <script src="scripts/storage.js?v=20260221.2600"></script>
     <!-- 4. Game logic -->
     <script src="scripts/game.js?v=20260221.2600"></script>
+    <!-- 4b. Sound effects -->
+    <script src="scripts/sound.js?v=20260221.2600"></script>
     <!-- 5. Tournament logic -->
     <script src="scripts/tournament.js?v=20260221.2600"></script>
     <!-- 6. League logic -->

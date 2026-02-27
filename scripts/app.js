@@ -571,6 +571,17 @@ const App = (() => {
         document.getElementById('home-btn')?.addEventListener('click', () => {
             Router.navigate('home');
         });
+
+        // Sound toggle
+        const soundBtn = document.getElementById('sound-toggle-btn');
+        if (soundBtn) {
+            // Set initial icon from stored state
+            soundBtn.textContent = SoundFX.isEnabled() ? '🔊' : '🔇';
+            soundBtn.addEventListener('click', () => {
+                const enabled = SoundFX.toggle();
+                soundBtn.textContent = enabled ? '🔊' : '🔇';
+            });
+        }
     }
 
     /**
@@ -1247,6 +1258,18 @@ const App = (() => {
             const roundCompleted = currentGame.current_turn > previousTurn;
             console.log(`Round completed: ${roundCompleted} (prev: ${previousTurn}, curr: ${currentGame.current_turn})`);
 
+            // Handle bust
+            if (result.busted) {
+                const prevIdx = (currentGame.current_player_index - 1 + currentGame.players.length) % currentGame.players.length;
+                UI.bustShakeAnimation(prevIdx);
+                SoundFX.play('bust');
+                triggerHaptic([100, 50, 100]);
+                UI.showToast('BUST! Score reverted', 'warning');
+                UI.updateWinnersBoard(result.allRankings || Game.getRankings(currentGame), roundCompleted);
+                UI.updateActiveGameUI(currentGame, false);
+                return;
+            }
+
             // Player finished - update winners board
             if (result.playerFinished) {
                 triggerHaptic([50, 100, 50, 100, 200]); // "Celebration" pattern
@@ -1256,11 +1279,13 @@ const App = (() => {
 
                 // If game ended (last player finished)
                 if (result.gameEnded) {
+                    SoundFX.play('gameComplete');
                     UI.updateWinnersBoard(result.finalRankings, true);
                     setTimeout(() => {
                         showGameCompletionModal(result.finalRankings);
                     }, 800);
                 } else {
+                    SoundFX.play('playerFinish');
                     // Continue with next player
                     setTimeout(() => {
                         UI.updateActiveGameUI(currentGame, false); // Don't animate on next player setup
@@ -1268,10 +1293,18 @@ const App = (() => {
                     }, 800);
                 }
             } else {
-                // Haptic for high score
-                if (turnTotal >= 100) {
+                // Sound + haptic based on score tier
+                if (turnTotal === 180) {
+                    SoundFX.play('maxScore');
+                    triggerHaptic(100);
+                } else if (turnTotal >= 140) {
+                    SoundFX.play('highScore140');
+                    triggerHaptic(100);
+                } else if (turnTotal >= 100) {
+                    SoundFX.play('highScore');
                     triggerHaptic(100);
                 } else {
+                    SoundFX.play('submit');
                     triggerHaptic(40); // Subtle "click"
                 }
 
@@ -1344,14 +1377,6 @@ const App = (() => {
         const rankingsDiv = document.getElementById('completion-rankings');
         const actionsDiv = document.querySelector('.completion-actions');
 
-        console.log('showGameCompletionModal called');
-        console.log('finalRankings:', finalRankings);
-        console.log('finalRankings type:', typeof finalRankings);
-        console.log('finalRankings is array:', Array.isArray(finalRankings));
-        console.log('finalRankings length:', finalRankings ? finalRankings.length : 'N/A');
-        console.log('modal element found:', !!modal);
-        console.log('rankingsDiv element found:', !!rankingsDiv);
-
         if (!modal || !rankingsDiv) {
             console.error('Modal or rankings div not found!');
             return;
@@ -1360,15 +1385,21 @@ const App = (() => {
         if (!finalRankings || !Array.isArray(finalRankings) || finalRankings.length === 0) {
             console.error('No valid rankings data available!', finalRankings);
             rankingsDiv.innerHTML = '<p>No rankings available</p>';
-            UI.showModal(modal);
+            modal.classList.remove('hidden');
             return;
         }
 
-        // Display final rankings
+        // Helper: count 180s for a player from the game data
+        function count180s(playerName) {
+            if (!currentGame) return 0;
+            const p = currentGame.players.find(pl => pl.name === playerName);
+            if (!p) return 0;
+            return p.turns.filter(t => !t.busted && t.darts.reduce((a, b) => a + b, 0) === 180).length;
+        }
+
+        // Section A: Final Rankings (enhanced)
         let rankingsHtml = '<div class="final-rankings">';
-        console.log('Rendering rankings:');
         finalRankings.forEach((player, index) => {
-            console.log(`  Ranking ${index}:`, player);
             const medals = ['🥇', '🥈', '🥉'];
             const medal = medals[index] || '🏅';
             const position = index + 1;
@@ -1377,20 +1408,178 @@ const App = (() => {
             else if (position % 10 === 2 && position % 100 !== 12) suffix = 'nd';
             else if (position % 10 === 3 && position % 100 !== 13) suffix = 'rd';
 
+            const isWinner = index === 0;
+            const num180 = count180s(player.name);
+            const badge180 = num180 > 0 ? `<span class="badge-180">180 x${num180}</span>` : '';
+
             rankingsHtml += `
-                <div class="ranking-row">
+                <div class="ranking-row ${isWinner ? 'winner-row' : ''}">
                     <span class="rank-medal">${medal}</span>
                     <span class="rank-position">${position}${suffix}</span>
-                    <span class="rank-name">${player.name}</span>
+                    <span class="rank-name">${player.name}${badge180}</span>
                     <span class="rank-stats">${player.turns} turns • ${parseFloat(player.avgPerTurn || player.avgPerDart).toFixed(1)} avg</span>
                 </div>
             `;
         });
         rankingsHtml += '</div>';
 
-        console.log('Rankings HTML:', rankingsHtml);
+        // Section B: Head-to-Head Comparison (2-player games only)
+        if (finalRankings.length === 2 && currentGame) {
+            const p1 = currentGame.players[0];
+            const p2 = currentGame.players[1];
+            const r1 = finalRankings.find(r => r.name === p1.name) || finalRankings[0];
+            const r2 = finalRankings.find(r => r.name === p2.name) || finalRankings[1];
+
+            function h2hRow(label, v1, v2, higherIsBetter = true) {
+                const n1 = parseFloat(v1), n2 = parseFloat(v2);
+                const w1 = higherIsBetter ? n1 > n2 : n1 < n2;
+                const w2 = higherIsBetter ? n2 > n1 : n2 < n1;
+                return `<div class="h2h-row">
+                    <span class="h2h-val ${w1 ? 'winner-val' : ''}">${v1}</span>
+                    <span class="h2h-label">${label}</span>
+                    <span class="h2h-val ${w2 ? 'winner-val' : ''}">${v2}</span>
+                </div>`;
+            }
+
+            const p1_100plus = p1.turns.filter(t => !t.busted && t.darts.reduce((a, b) => a + b, 0) >= 100).length;
+            const p2_100plus = p2.turns.filter(t => !t.busted && t.darts.reduce((a, b) => a + b, 0) >= 100).length;
+            const p1_checkout = p1.stats.checkoutAttempts > 0 ? ((p1.stats.checkoutSuccess / p1.stats.checkoutAttempts) * 100).toFixed(0) + '%' : '—';
+            const p2_checkout = p2.stats.checkoutAttempts > 0 ? ((p2.stats.checkoutSuccess / p2.stats.checkoutAttempts) * 100).toFixed(0) + '%' : '—';
+
+            rankingsHtml += `
+                <div class="h2h-comparison">
+                    <div class="h2h-title">Head to Head</div>
+                    <div class="h2h-header">
+                        <span class="h2h-player-name">${p1.name}</span>
+                        <span class="h2h-vs">vs</span>
+                        <span class="h2h-player-name">${p2.name}</span>
+                    </div>
+                    ${h2hRow('Avg/Turn', parseFloat(r1.avgPerTurn).toFixed(1), parseFloat(r2.avgPerTurn).toFixed(1), true)}
+                    ${h2hRow('Best Turn', p1.stats.maxTurn, p2.stats.maxTurn, true)}
+                    ${h2hRow('100+ Turns', p1_100plus, p2_100plus, true)}
+                    ${h2hRow('Total Darts', p1.stats.totalDarts, p2.stats.totalDarts, false)}
+                    ${h2hRow('Checkout %', p1_checkout, p2_checkout, true)}
+                </div>
+            `;
+        }
+
+        // Section D: Game Highlights
+        if (currentGame) {
+            let bestTurnVal = 0;
+            let bestTurnPlayer = '';
+            let total180 = 0;
+
+            currentGame.players.forEach(p => {
+                if (p.stats.maxTurn > bestTurnVal) {
+                    bestTurnVal = p.stats.maxTurn;
+                    bestTurnPlayer = p.name;
+                }
+                total180 += p.turns.filter(t => !t.busted && t.darts.reduce((a, b) => a + b, 0) === 180).length;
+            });
+
+            rankingsHtml += '<div class="game-highlights">';
+            rankingsHtml += `
+                <div class="highlight-card">
+                    <span class="highlight-icon">🎯</span>
+                    <span class="highlight-label">Best Turn</span>
+                    <span class="highlight-value">${bestTurnVal}</span>
+                    <span class="highlight-sub">${bestTurnPlayer}</span>
+                </div>
+            `;
+            if (total180 > 0) {
+                rankingsHtml += `
+                    <div class="highlight-card">
+                        <span class="highlight-icon">💯</span>
+                        <span class="highlight-label">180s Hit</span>
+                        <span class="highlight-value">${total180}</span>
+                    </div>
+                `;
+            }
+            rankingsHtml += '</div>';
+        }
+
+        // Section C: Personal Bests Detection
+        if (currentGame) {
+            let pbHtml = '';
+            for (const player of currentGame.players) {
+                try {
+                    const dbPlayer = await Storage.getPlayerByName(player.name);
+                    if (!dbPlayer) continue;
+                    const allTimeMaxTurn = dbPlayer.max_turn || 0;
+                    const allTimeAvg = dbPlayer.avg_per_turn || 0;
+                    const gameAvg = player.turns.length > 0 ? player.stats.totalScore / player.turns.length : 0;
+                    if (player.stats.maxTurn > allTimeMaxTurn) {
+                        pbHtml += `<div class="pb-item"><span class="pb-icon">⭐</span><span class="pb-player">${player.name}</span><span class="pb-stat">Best Turn</span><span class="pb-value">${player.stats.maxTurn}</span></div>`;
+                    }
+                    if (gameAvg > allTimeAvg && player.turns.length >= 3) {
+                        pbHtml += `<div class="pb-item"><span class="pb-icon">⭐</span><span class="pb-player">${player.name}</span><span class="pb-stat">Best Avg/Turn</span><span class="pb-value">${gameAvg.toFixed(1)}</span></div>`;
+                    }
+                } catch (e) {
+                    // Skip if player lookup fails
+                }
+            }
+            if (pbHtml) {
+                rankingsHtml += `<div class="personal-bests"><div class="pb-title">New Personal Bests!</div>${pbHtml}</div>`;
+            }
+        }
+
+        // Section E: Performance Trend Chart
+        if (currentGame && currentGame.players.some(p => p.turns.length >= 2)) {
+            rankingsHtml += `
+                <div class="completion-chart-container">
+                    <div class="completion-chart-title">Performance Trend</div>
+                    <canvas id="completion-performance-chart"></canvas>
+                </div>
+            `;
+        }
+
         rankingsDiv.innerHTML = rankingsHtml;
-        console.log('Rankings HTML set in DOM');
+
+        // Render performance chart after DOM insert
+        if (currentGame && currentGame.players.some(p => p.turns.length >= 2)) {
+            requestAnimationFrame(() => {
+                const canvas = document.getElementById('completion-performance-chart');
+                if (!canvas || typeof Chart === 'undefined') return;
+
+                const playerColors = ['#7d5f92', '#38a2ff', '#2de36d', '#facf39', '#ff6b6b', '#ff8a65'];
+                const datasets = currentGame.players.map((player, idx) => {
+                    let runningTotal = 0;
+                    const data = player.turns.map((turn, i) => {
+                        const turnScore = turn.busted ? 0 : turn.darts.reduce((a, b) => a + b, 0);
+                        runningTotal += turnScore;
+                        return parseFloat((runningTotal / (i + 1)).toFixed(1));
+                    });
+                    return {
+                        label: player.name,
+                        data: data,
+                        borderColor: playerColors[idx % playerColors.length],
+                        backgroundColor: 'transparent',
+                        tension: 0.3,
+                        pointRadius: 2,
+                        borderWidth: 2
+                    };
+                });
+
+                const maxRounds = Math.max(...currentGame.players.map(p => p.turns.length));
+                const labels = Array.from({ length: maxRounds }, (_, i) => i + 1);
+
+                new Chart(canvas, {
+                    type: 'line',
+                    data: { labels, datasets },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12, padding: 8, font: { size: 11 } } }
+                        },
+                        scales: {
+                            x: { title: { display: true, text: 'Round', font: { size: 10 } }, grid: { display: false } },
+                            y: { title: { display: true, text: 'Running Avg', font: { size: 10 } }, grid: { color: 'rgba(0,0,0,0.05)' } }
+                        }
+                    }
+                });
+            });
+        }
 
         // Check if this is a competition match and update actions
         if (actionsDiv && currentGame) {

@@ -92,7 +92,8 @@ const LocalStorageBackend = (() => {
                     totalDarts: gp.total_darts,
                     totalScore: gp.total_score,
                     totalTurns: gp.total_turns || 0,
-                    avgPerDart: gp.avg_per_turn,
+                    avgPerTurn: gp.avg_per_turn || (gp.total_turns > 0 ? (gp.total_score / gp.total_turns).toFixed(2) : 0),
+                    avgPerDart: gp.total_darts > 0 ? (gp.total_score / gp.total_darts).toFixed(2) : 0,
                     maxTurn: gp.max_turn,
                     maxDart: gp.max_dart,
                     checkoutAttempts: 0,
@@ -165,7 +166,9 @@ const LocalStorageBackend = (() => {
                 stats: {
                     totalDarts: gp.total_darts,
                     totalScore: gp.total_score,
-                    avgPerDart: gp.avg_per_turn,
+                    totalTurns: gp.total_turns || 0,
+                    avgPerTurn: gp.avg_per_turn || (gp.total_turns > 0 ? (gp.total_score / gp.total_turns).toFixed(2) : 0),
+                    avgPerDart: gp.total_darts > 0 ? (gp.total_score / gp.total_darts).toFixed(2) : 0,
                     maxTurn: gp.max_turn,
                     maxDart: gp.max_dart,
                     checkoutAttempts: 0,
@@ -323,7 +326,7 @@ const LocalStorageBackend = (() => {
             total_score: p.stats.totalScore,
             max_dart: p.stats.maxDart,
             max_turn: p.stats.maxTurn,
-            avg_per_turn: p.stats.avgPerDart || 0,
+            avg_per_turn: p.stats.avgPerTurn || (p.turns.length > 0 ? p.stats.totalScore / p.turns.length : 0),
             count_180s: countScoresInRange(p.turns, 100, Infinity),
             count_140_plus: countScoresInRange(p.turns, 140, Infinity),
             checkout_attempts: p.stats.checkoutAttempts || 0,
@@ -607,11 +610,16 @@ const LocalStorageBackend = (() => {
             if (turns.length > 0) {
                 // Compute from actual turn data for accuracy
                 turns.forEach(t => {
+                    totalTurns++; // Always count the turn (busted or not)
+
+                    // Busted turns (exact mode only) don't count toward score/darts
+                    // because the player's score reverts in-game
+                    if (t.is_busted) return;
+
                     const darts = Array.isArray(t.dart_scores) ? t.dart_scores : [t.turn_total || 0];
                     const turnTotal = darts.reduce((a, b) => a + b, 0);
                     totalScore += turnTotal;
                     totalDarts += isPerTurn ? 3 : darts.length;
-                    totalTurns++;
                     if (turnTotal > maxTurn) maxTurn = turnTotal;
                     if (!isPerTurn) {
                         const dartMax = Math.max(...darts);

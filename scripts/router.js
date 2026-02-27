@@ -40,7 +40,7 @@ const Router = (() => {
             // Support subtab routes: #/leaderboard/:metric/:filter
             const validMetrics = ['wins', 'win-rate', 'avg-turn', '100s', 'max-turn'];
             const validFilters = ['all-time', '30-days', '7-days'];
-            const metric = validMetrics.includes(pathParts[1]) ? pathParts[1] : 'wins';
+            const metric = validMetrics.includes(pathParts[1]) ? pathParts[1] : 'avg-turn';
             const filter = validFilters.includes(pathParts[2]) ? pathParts[2] : 'all-time';
             return { route: 'leaderboard', metric, filter };
         }
@@ -117,7 +117,7 @@ const Router = (() => {
                 break;
             case 'leaderboard':
                 // Support subtab params: metric and filter
-                const metric = params.metric || 'wins';
+                const metric = params.metric || 'avg-turn';
                 const filter = params.filter || 'all-time';
                 path = `#/leaderboard/${metric}/${filter}`;
                 break;

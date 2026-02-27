@@ -4,8 +4,8 @@
   "description": "Track your dart games with detailed statistics and leaderboards",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#fbf5ff",
-  "theme_color": "#7d5f92",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
   "orientation": "portrait-primary",
   "scope": "/",
   "icons": [
@@ -24,7 +24,7 @@
   ],
   "screenshots": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 720'><rect fill='%23fbf5ff' width='540' height='720'/><text x='270' y='360' font-size='100' text-anchor='middle' fill='%237d5f92'>Dart Bee</text></svg>",
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 720'><rect fill='%230d1117' width='540' height='720'/><text x='270' y='360' font-size='100' text-anchor='middle' fill='%23FFD700'>Dart Bee</text></svg>",
       "sizes": "540x720",
       "type": "image/svg+xml",
       "form_factor": "narrow"

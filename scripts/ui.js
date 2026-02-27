@@ -4,6 +4,35 @@
  */
 
 const UI = (() => {
+    // Cache previous scores for countdown animation
+    const previousPlayerScores = new Map();
+
+    /**
+     * Animate score countdown from oldVal to newVal on an element
+     */
+    function animateScoreCountdown(element, from, to, duration = 600) {
+        if (from === to) return;
+        element.classList.add('counting');
+        const start = performance.now();
+        const diff = to - from;
+
+        function step(timestamp) {
+            const elapsed = timestamp - start;
+            const progress = Math.min(elapsed / duration, 1);
+            // ease-out-cubic
+            const eased = 1 - Math.pow(1 - progress, 3);
+            const current = Math.round(from + diff * eased);
+            element.textContent = current;
+            if (progress < 1) {
+                requestAnimationFrame(step);
+            } else {
+                element.textContent = to;
+                element.classList.remove('counting');
+            }
+        }
+        requestAnimationFrame(step);
+    }
+
     /**
      * Get human-readable time ago string
      */
@@ -771,21 +800,75 @@ const UI = (() => {
      */
     function renderScoreboard(game) {
         const container = document.getElementById('scoreboard');
+
+        // Build sparkline and trend data per player
+        const playerExtras = game.players.map((player) => {
+            const turns = player.turns || [];
+            const turnScores = turns.map(t => (t.busted ? 0 : t.darts.reduce((a, b) => a + b, 0)));
+
+            // Trend: compare last 3 vs previous 3
+            let trendHtml = '';
+            if (turnScores.length >= 2) {
+                const last3 = turnScores.slice(-3);
+                const prev3 = turnScores.slice(-6, -3);
+                const lastAvg = last3.reduce((a, b) => a + b, 0) / last3.length;
+                const prevAvg = prev3.length > 0 ? prev3.reduce((a, b) => a + b, 0) / prev3.length : lastAvg;
+                const diff = lastAvg - prevAvg;
+                if (diff > 2) {
+                    trendHtml = '<span class="trend-indicator trend-up">&#9650;</span>';
+                } else if (diff < -2) {
+                    trendHtml = '<span class="trend-indicator trend-down">&#9660;</span>';
+                } else {
+                    trendHtml = '<span class="trend-indicator trend-neutral">&#9654;</span>';
+                }
+            }
+
+            // Sparkline: last 5 turn scores
+            let sparkHtml = '';
+            if (turnScores.length > 0) {
+                const last5 = turnScores.slice(-5);
+                const maxVal = Math.max(...last5, 1);
+                sparkHtml = '<span class="sparkline-container" data-values="' + last5.join(',') + '">' +
+                    last5.map(v => {
+                        const h = Math.max(2, Math.round((v / maxVal) * 16));
+                        return '<span class="sparkline-bar" style="height:' + h + 'px"></span>';
+                    }).join('') +
+                    '</span>';
+            }
+
+            return { trendHtml, sparkHtml };
+        });
+
         container.innerHTML = game.players.map((player, index) => {
             const isCurrent = index === game.current_player_index;
             const stats = player.stats;
+            const extras = playerExtras[index];
+            const avgDisplay = player.turns.length > 0 ? (stats.totalScore / player.turns.length).toFixed(1) : '—';
             return `
                 <div class="player-score-card ${isCurrent ? 'current' : ''}" data-player-index="${index}">
                     <div class="player-score-name">${player.name}</div>
                     <div class="player-score-value">${player.currentScore}</div>
                     <div class="player-score-stats">
                         <div>Turns: ${player.turns.length}</div>
-                        <div>Darts: ${stats.totalDarts}</div>
-                        <div>Avg: ${player.turns.length > 0 ? (stats.totalScore / player.turns.length).toFixed(1) : '—'}</div>
+                        <div>Avg: ${avgDisplay} ${extras.trendHtml}</div>
+                        <div>${extras.sparkHtml}</div>
                     </div>
                 </div>
             `;
         }).join('');
+
+        // Animate score countdown for any changed scores
+        game.players.forEach((player, index) => {
+            const key = player.name + '_' + index;
+            const prev = previousPlayerScores.get(key);
+            if (prev !== undefined && prev !== player.currentScore) {
+                const el = container.querySelector(`.player-score-card[data-player-index="${index}"] .player-score-value`);
+                if (el) {
+                    animateScoreCountdown(el, prev, player.currentScore, 600);
+                }
+            }
+            previousPlayerScores.set(key, player.currentScore);
+        });
     }
 
     /**
@@ -848,6 +931,22 @@ const UI = (() => {
             quickSection.appendChild(btn);
         });
         container.appendChild(quickSection);
+
+        // Checkout suggestions
+        if (game.win_condition === 'exact' && player.currentScore <= 170 && player.currentScore >= 2) {
+            const routes = Game.getCheckoutSuggestions(player.currentScore);
+            if (routes) {
+                const checkoutDiv = document.createElement('div');
+                checkoutDiv.className = 'checkout-suggestions';
+                checkoutDiv.innerHTML = `
+                    <div class="checkout-label">Checkout</div>
+                    <div class="checkout-routes">
+                        ${routes.map(r => `<span class="checkout-pill">${r}</span>`).join('')}
+                    </div>
+                `;
+                container.appendChild(checkoutDiv);
+            }
+        }
     }
 
     /**
@@ -1549,6 +1648,19 @@ const UI = (() => {
         if (!card) return;
         card.classList.add('score-flash');
         setTimeout(() => card.classList.remove('score-flash'), 600);
+    }
+
+    function bustShakeAnimation(playerIndex) {
+        const card = document.querySelector(`.player-score-card[data-player-index="${playerIndex}"]`);
+        const dartEntry = document.querySelector('.dart-entry-section');
+        if (card) {
+            card.classList.add('bust-shake');
+            setTimeout(() => card.classList.remove('bust-shake'), 800);
+        }
+        if (dartEntry) {
+            dartEntry.classList.add('bust-flash');
+            setTimeout(() => dartEntry.classList.remove('bust-flash'), 800);
+        }
     }
 
     /**
@@ -3387,6 +3499,7 @@ const UI = (() => {
         renderPlayerProfile,
         updateActiveGameUI,
         flashScoreCard,
+        bustShakeAnimation,
         renderSpectatorGame,
         updateWinnersBoard,
         showLiveIndicator,

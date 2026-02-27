@@ -195,7 +195,7 @@ const StatsWidgets = (() => {
     /**
      * Render a progress ring SVG
      */
-    function renderProgressRing(value, max, label, color = '#7d5f92', size = 100) {
+    function renderProgressRing(value, max, label, color = '#FFD700', size = 100) {
         const percentage = Math.min((value / max) * 100, 100);
         const radius = (size - 10) / 2;
         const circumference = 2 * Math.PI * radius;
@@ -239,31 +239,30 @@ const StatsWidgets = (() => {
      * Render progress rings section with customizable goals
      */
     function renderProgressRings(stats, goals) {
-        const dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
         const rings = [
             {
                 label: 'Win Rate Goal',
                 value: parseFloat(stats.winRate) || 0,
                 max: goals.targetWinRate,
-                color: dark ? '#5ec987' : '#2de36d'
+                color: '#3fb950'
             },
             {
                 label: '100s Goal',
                 value: stats.total100s || 0,
                 max: goals.target100s,
-                color: dark ? '#9d7fb2' : '#7d5f92'
+                color: '#FFD700'
             },
             {
                 label: 'Games Goal',
                 value: stats.gamesPlayed || 0,
                 max: goals.targetGames,
-                color: dark ? '#6aa8d4' : '#38a2ff'
+                color: '#58a6ff'
             },
             {
                 label: 'Avg/Turn Goal',
                 value: parseFloat(stats.avgPerTurn || stats.avgPerDart) || 0,
                 max: goals.targetAvgPerDart,
-                color: dark ? '#d4b44a' : '#facf39'
+                color: '#FFD700'
             }
         ];
 
@@ -653,11 +652,10 @@ const StatsWidgets = (() => {
             normalizeValue(parseFloat(stats2.checkoutPercentage) || 0, 100)
         ];
 
-        const dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-        const gridColor = dark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.1)';
-        const textColor = dark ? '#d4d4d4' : '#2d2d2d';
-        const purple = dark ? '#9d7fb2' : '#7d5f92';
-        const green = dark ? '#5ec987' : '#2de36d';
+        const gridColor = 'rgba(255, 255, 255, 0.12)';
+        const textColor = '#e6edf3';
+        const purple = '#FFD700';
+        const green = '#3fb950';
 
         const chart = new Chart(ctx, {
             type: 'radar',
@@ -667,7 +665,7 @@ const StatsWidgets = (() => {
                     {
                         label: name1,
                         data: data1,
-                        backgroundColor: 'rgba(125, 95, 146, 0.2)',
+                        backgroundColor: 'rgba(255, 215, 0, 0.2)',
                         borderColor: purple,
                         borderWidth: 2,
                         pointBackgroundColor: purple
@@ -675,7 +673,7 @@ const StatsWidgets = (() => {
                     {
                         label: name2,
                         data: data2,
-                        backgroundColor: 'rgba(45, 227, 109, 0.2)',
+                        backgroundColor: 'rgba(63, 185, 80, 0.2)',
                         borderColor: green,
                         borderWidth: 2,
                         pointBackgroundColor: green

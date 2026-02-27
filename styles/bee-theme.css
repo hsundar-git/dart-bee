@@ -1,53 +1,34 @@
 /* ============================
-   BEE THEME ENHANCEMENTS
-   Navy Blue & Bee Yellow Theme
+   THEME ENHANCEMENTS
+   Minimal Dark + Gold
    ============================ */
 
-/* Gradient Backgrounds */
+/* Gradient Backgrounds (kept as utility) */
 .gradient-bg-primary {
-    background: linear-gradient(135deg, #1B2D4A 0%, #2A4365 100%);
+    background: #161b22;
 }
 
 .gradient-bg-hero {
-    background: radial-gradient(75% 62%, #2A4365 18%, #1B2D4A 85%);
+    background: #161b22;
 }
 
+/* Modern Hero — flat dark surface */
 .modern-hero {
-    background:
-        radial-gradient(ellipse 80% 50% at 20% 80%, rgba(255, 215, 0, 0.15) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 50% at 80% 20%, rgba(56, 162, 255, 0.12) 0%, transparent 60%),
-        linear-gradient(160deg, #0f1b2e 0%, #1B2D4A 30%, #2A4365 70%, #1a3a5c 100%);
+    background: #161b22;
     padding: var(--spacing-lg) var(--spacing-md);
     border-radius: var(--radius-xl);
-    color: white;
+    color: #e6edf3;
     text-align: center;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 8px 32px rgba(11, 22, 44, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    box-shadow: none;
     margin-bottom: var(--spacing-md);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid #30363d;
 }
 
-.modern-hero::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background:
-        url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 0l25.98 15v30L30 60 4.02 45V15z' fill-opacity='0.025' fill='%23ffffff' fill-rule='evenodd'/%3E%3C/svg%3E");
-    opacity: 0.6;
-    pointer-events: none;
-}
-
+.modern-hero::before,
 .modern-hero::after {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -20%;
-    width: 300px;
-    height: 300px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(255, 215, 0, 0.08) 0%, transparent 70%);
-    pointer-events: none;
+    display: none;
 }
 
 .hero-content {
@@ -58,22 +39,24 @@
 }
 
 .hero-title {
+    font-family: var(--font-family-display) !important;
     font-size: clamp(1.4rem, 4vw, 2rem) !important;
-    font-weight: 900 !important;
+    font-weight: 700 !important;
     margin-bottom: var(--spacing-xs);
-    letter-spacing: -0.5px;
-    color: white !important;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #e6edf3 !important;
 }
 
 .hero-subtitle {
     font-size: var(--font-size-sm);
     opacity: 0.9;
     margin-bottom: var(--spacing-md);
-    color: rgba(255, 255, 255, 0.8) !important;
+    color: #8b949e !important;
 }
 
 .text-accent {
-    color: var(--color-accent);
+    color: #FFD700;
 }
 
 .hero-actions {
@@ -83,11 +66,12 @@
     margin-bottom: var(--spacing-md);
 }
 
+/* Hero CTA — solid gold, no glow */
 .btn-hero-large {
     padding: var(--spacing-sm) var(--spacing-xl) !important;
     font-size: var(--font-size-base) !important;
-    border-radius: var(--radius-lg) !important;
-    box-shadow: 0 4px 16px rgba(255, 215, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: none !important;
     position: relative;
     z-index: 1;
 }
@@ -101,11 +85,11 @@
 }
 
 .quick-action-card {
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid #30363d;
     border-radius: var(--radius-md);
     padding: 6px 14px;
-    color: rgba(255, 255, 255, 0.8);
+    color: #8b949e;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
@@ -117,9 +101,9 @@
 }
 
 .quick-action-card:hover {
-    background: rgba(255, 255, 255, 0.12);
-    border-color: rgba(255, 255, 255, 0.2);
-    color: white;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: #FFD700;
+    color: #e6edf3;
 }
 
 .quick-icon {
@@ -133,319 +117,27 @@
     letter-spacing: 0.3px;
 }
 
-.gradient-overlay {
-    position: relative;
-}
-
-.gradient-overlay::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(135deg, rgba(27, 45, 74, 0.05) 0%, rgba(255, 215, 0, 0.05) 100%);
-    pointer-events: none;
-    border-radius: inherit;
-}
-
-/* Honeycomb Pattern Background */
-.honeycomb-bg {
-    background-color: #f5f7fa;
-    background-image:
-        repeating-linear-gradient(30deg, transparent, transparent 2px, rgba(27, 45, 74, 0.02) 2px, rgba(27, 45, 74, 0.02) 4px),
-        repeating-linear-gradient(150deg, transparent, transparent 2px, rgba(255, 215, 0, 0.02) 2px, rgba(255, 215, 0, 0.02) 4px),
-        repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(27, 45, 74, 0.02) 2px, rgba(27, 45, 74, 0.02) 4px);
-}
-
-@media (prefers-color-scheme: dark) {
-    .honeycomb-bg {
-        background-color: #0f0f23;
-        background-image:
-            repeating-linear-gradient(30deg, transparent, transparent 2px, rgba(255, 255, 255, 0.01) 2px, rgba(255, 255, 255, 0.01) 4px),
-            repeating-linear-gradient(150deg, transparent, transparent 2px, rgba(255, 215, 0, 0.01) 2px, rgba(255, 215, 0, 0.01) 4px),
-            repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(255, 255, 255, 0.01) 2px, rgba(255, 255, 255, 0.01) 4px);
-    }
-
-    .glass-card {
-        background: rgba(22, 33, 62, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-    }
-
-    .stat-card-bee {
-        background: linear-gradient(135deg, rgba(22, 33, 62, 0.9) 0%, rgba(26, 26, 46, 0.9) 100%);
-    }
-}
-
-/* Glassmorphism Effects */
-.glass-card {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(27, 45, 74, 0.1);
-    box-shadow: 0 8px 32px 0 rgba(27, 45, 74, 0.1);
-}
-
-.glass-card-dark {
-    background: rgba(27, 45, 74, 0.1);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border: 1px solid rgba(27, 45, 74, 0.2);
-}
-
-/* Bee-themed Decorative Elements */
-.bee-accent {
-    position: relative;
-}
-
-.bee-accent::after {
-    content: '🐝';
-    position: absolute;
-    font-size: 1.5rem;
-    opacity: 0.1;
-    animation: float 3s ease-in-out infinite;
-}
-
-@keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-10px); }
-}
-
-/* Hexagon Decorations */
-.hex-decoration {
-    position: relative;
-}
-
-.hex-decoration::before {
-    content: '';
-    position: absolute;
-    width: 40px;
-    height: 40px;
-    background: linear-gradient(135deg, rgba(27, 45, 74, 0.1) 0%, rgba(61, 90, 128, 0.1) 100%);
-    clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
-    opacity: 0.5;
-}
-
-/* Enhanced Stat Cards with Bee Theme */
-.stat-card-bee {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(251, 245, 255, 0.9) 100%);
-    backdrop-filter: blur(10px);
-    border: 2px solid transparent;
-    background-clip: padding-box;
-    position: relative;
-    overflow: hidden;
-}
-
-.stat-card-bee::before {
-    content: '';
-    position: absolute;
-    top: -2px;
-    left: -2px;
-    right: -2px;
-    bottom: -2px;
-    background: linear-gradient(135deg, #1B2D4A, #3D5A80, #38a2ff);
-    border-radius: inherit;
-    z-index: -1;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.stat-card-bee:hover::before {
-    opacity: 1;
-}
-
-.stat-card-bee:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 24px rgba(27, 45, 74, 0.2);
-}
-
-/* Bee Icon Styles */
-.bee-icon {
-    display: inline-block;
-    width: 32px;
-    height: 32px;
-    background: linear-gradient(135deg, #facf39 0%, #f4c430 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    font-size: 32px;
-    line-height: 1;
-}
-
-.bee-icon-animated {
-    animation: buzz 0.5s ease-in-out infinite alternate;
-}
-
-@keyframes buzz {
-    0% { transform: rotate(-3deg); }
-    100% { transform: rotate(3deg); }
-}
-
-/* Honey Drip Effect for Headers */
-.honey-drip {
-    position: relative;
-    padding-bottom: 1.5rem;
-}
-
-.honey-drip::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg,
-        transparent 0%,
-        #facf39 20%,
-        #facf39 80%,
-        transparent 100%
-    );
-    border-radius: 0 0 50% 50% / 0 0 100% 100%;
-}
-
-/* Striped Bee Pattern (subtle) */
-.bee-stripes {
-    background: repeating-linear-gradient(
-        90deg,
-        transparent,
-        transparent 10px,
-        rgba(27, 45, 74, 0.02) 10px,
-        rgba(27, 45, 74, 0.02) 20px
-    );
-}
-
-/* Enhanced Button with Bee Theme */
+/* Solid Gold Button */
 .btn-bee {
-    background: linear-gradient(135deg, #facf39 0%, #f4c430 100%);
-    color: #1B2D4A;
+    background: #FFD700;
+    color: #0d1117;
     border: none;
-    font-weight: 600;
+    font-family: var(--font-family-display);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
     position: relative;
     overflow: hidden;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
 }
 
 .btn-bee::before {
-    content: '🐝';
-    position: absolute;
-    left: -30px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 1.2rem;
-    transition: left 0.3s ease;
-}
-
-.btn-bee:hover::before {
-    left: 10px;
+    display: none;
 }
 
 .btn-bee:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(244, 196, 48, 0.4);
-    padding-left: 2.5rem;
-}
-
-/* Leaderboard Trophy with Bee Crown */
-.trophy-bee::before {
-    content: '👑';
-    position: absolute;
-    top: -10px;
-    right: -5px;
-    font-size: 1.5rem;
-    filter: hue-rotate(45deg);
-    animation: shine 2s ease-in-out infinite;
-}
-
-@keyframes shine {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.6; }
-}
-
-/* Ambient Bee Animation */
-.ambient-bees {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    pointer-events: none;
-    z-index: 0;
-    overflow: hidden;
-}
-
-.ambient-bee {
-    position: absolute;
-    font-size: 1.5rem;
-    opacity: 0.05;
-    animation: fly-around 20s infinite;
-}
-
-.ambient-bee:nth-child(1) {
-    top: 10%;
-    left: 10%;
-    animation-delay: 0s;
-    animation-duration: 25s;
-}
-
-.ambient-bee:nth-child(2) {
-    top: 60%;
-    left: 80%;
-    animation-delay: 5s;
-    animation-duration: 30s;
-}
-
-.ambient-bee:nth-child(3) {
-    top: 30%;
-    left: 50%;
-    animation-delay: 10s;
-    animation-duration: 35s;
-}
-
-@keyframes fly-around {
-    0% {
-        transform: translate(0, 0) rotate(0deg);
-    }
-    25% {
-        transform: translate(100px, 50px) rotate(90deg);
-    }
-    50% {
-        transform: translate(50px, 100px) rotate(180deg);
-    }
-    75% {
-        transform: translate(-50px, 50px) rotate(270deg);
-    }
-    100% {
-        transform: translate(0, 0) rotate(360deg);
-    }
-}
-
-/* Page Header with Gradient */
-.page-header-bee {
-    background: linear-gradient(135deg, #1B2D4A 0%, #3D5A80 50%, #38a2ff 100%);
-    color: white;
-    padding: 2rem;
-    border-radius: 1rem;
-    margin-bottom: 2rem;
-    position: relative;
-    overflow: hidden;
-}
-
-.page-header-bee::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -10%;
-    width: 200px;
-    height: 200px;
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 50%;
-    animation: float 6s ease-in-out infinite;
-}
-
-/* SVG Bee Illustration Background */
-.bee-illustration-bg {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' opacity='0.05'%3E%3Ccircle cx='50' cy='45' r='20' fill='%23facf39'/%3E%3Cellipse cx='50' cy='45' rx='18' ry='20' fill='%23271f36' opacity='0.2'/%3E%3Cellipse cx='35' cy='40' rx='8' ry='10' fill='%23fff' opacity='0.3'/%3E%3Cellipse cx='65' cy='40' rx='8' ry='10' fill='%23fff' opacity='0.3'/%3E%3Cpath d='M30,30 Q20,20 25,15' stroke='%23271f36' stroke-width='2' fill='none'/%3E%3Cpath d='M70,30 Q80,20 75,15' stroke='%23271f36' stroke-width='2' fill='none'/%3E%3C/svg%3E");
-    background-repeat: repeat;
-    background-size: 100px 100px;
+    background: #ffe566;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(255, 215, 0, 0.2);
+    padding-left: inherit;
 }

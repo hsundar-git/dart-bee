@@ -3,31 +3,31 @@
    Based on Nudge Bee aesthetic
    ============================ */
 
-/* CSS Variables */
+/* CSS Variables — Minimal Dark + Gold */
 :root {
-    /* Colors - Navy & Bee Yellow Palette */
-    --color-primary-dark: #1B2D4A;
-    --color-primary: #2A4365;
-    --color-primary-light: #3D5A80;
+    /* Colors — Dark palette with gold accent */
+    --color-primary-dark: #e6edf3;
+    --color-primary: #FFD700;
+    --color-primary-light: #ffe566;
     --color-accent: #FFD700;
-    --color-accent-light: #FFEB3B;
-    --color-accent-green: #2de36d;
+    --color-accent-light: #ffe566;
+    --color-accent-green: #3fb950;
     --color-accent-yellow: #FFD700;
-    --color-accent-blue: #38a2ff;
-    --color-accent-red: #ff6b6b;
+    --color-accent-blue: #58a6ff;
+    --color-accent-red: #f85149;
 
-    --color-bg-light: #f5f7fa;
-    --color-bg-lighter: #ffffff;
-    --color-bg-hover: #eef2f7;
-    --color-text-dark: #1B2D4A;
-    --color-text-light: #5a6b7d;
-    --color-border: #d1dbe6;
+    --color-bg-light: #0d1117;
+    --color-bg-lighter: #161b22;
+    --color-bg-hover: #1c2128;
+    --color-text-dark: #e6edf3;
+    --color-text-light: #8b949e;
+    --color-border: #30363d;
 
     /* Status Colors */
-    --color-success: #2de36d;
+    --color-success: #3fb950;
     --color-warning: #FFD700;
-    --color-error: #ff6b6b;
-    --color-info: #38a2ff;
+    --color-error: #f85149;
+    --color-info: #58a6ff;
 
     /* Spacing */
     --spacing-xs: 0.25rem;
@@ -38,78 +38,47 @@
     --spacing-2xl: 3rem;
 
     /* Typography */
-    --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-family: 'Barlow', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-family-display: 'Oswald', 'Barlow', sans-serif;
     --font-size-xs: 0.75rem;
     --font-size-sm: 0.875rem;
     --font-size-md: 1rem;
     --font-size-lg: 1.125rem;
-    --font-size-xl: 1.5rem;
-    --font-size-2xl: 2rem;
-    --font-size-3xl: 2.5rem;
+    --font-size-xl: 1.35rem;
+    --font-size-2xl: 1.8rem;
+    --font-size-3xl: 2.25rem;
 
     --font-weight-regular: 400;
     --font-weight-medium: 500;
     --font-weight-semibold: 600;
     --font-weight-bold: 700;
-    --font-weight-extrabold: 800;
+    --font-weight-extrabold: 700;
 
     /* Border Radius */
-    --radius-sm: 0.375rem;
-    --radius-md: 0.5rem;
-    --radius-lg: 1rem;
-    --radius-xl: 1.5rem;
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 6px;
+    --radius-xl: 8px;
 
     /* Shadow */
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1);
-    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1);
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.3);
+    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.3);
 
     /* Transitions */
     --transition-fast: 150ms ease-in-out;
     --transition-base: 200ms ease-in-out;
     --transition-slow: 300ms ease-in-out;
 
-    /* Chart/widget colors (overridden in dark mode) */
-    --color-surface: #ffffff;
-    --color-card-bg: #ffffff;
-    --color-chart-grid: rgba(0, 0, 0, 0.05);
-    --color-chart-text: #2d2d2d;
-    --color-chart-text-light: #6b7280;
-    --color-ring-bg: #e5e7eb;
-    --color-heatmap-empty: #ebedf0;
-}
-
-@media (prefers-color-scheme: dark) {
-    :root {
-        --color-primary-dark: #8eaed4;
-        --color-primary: #7ba3d4;
-        --color-primary-light: #a8c4e0;
-        --color-accent-green: #5ec987;
-        --color-accent-yellow: #d4b44a;
-        --color-accent-blue: #6aa8d4;
-        --color-accent-red: #d47e7e;
-        --color-bg-light: #1a1a2e;
-        --color-bg-lighter: #16213e;
-        --color-bg-hover: #1f2b47;
-        --color-text-dark: #d4d4d4;
-        --color-text-light: #8892a4;
-        --color-border: #2d3a52;
-        --color-surface: #1a1a2e;
-        --color-card-bg: #16213e;
-        --color-chart-grid: rgba(255, 255, 255, 0.08);
-        --color-chart-text: #d4d4d4;
-        --color-chart-text-light: #8892a4;
-        --color-ring-bg: #374151;
-        --color-heatmap-empty: #2d3748;
-        --color-success: #5ec987;
-        --color-warning: #d4b44a;
-        --color-error: #d47e7e;
-        --color-info: #6aa8d4;
-        --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-        --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
-        --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.4);
-    }
+    /* Chart/widget colors */
+    --color-surface: #161b22;
+    --color-card-bg: #161b22;
+    --color-chart-grid: rgba(255, 255, 255, 0.08);
+    --color-chart-text: #e6edf3;
+    --color-chart-text-light: #8b949e;
+    --color-ring-bg: #30363d;
+    --color-heatmap-empty: #161b22;
 }
 
 /* ============================
@@ -155,19 +124,10 @@ body {
     box-shadow: var(--shadow-sm);
 }
 
-/* Glassmorphism Navigation */
+/* Solid Dark Navigation */
 .glass-nav {
-    background: rgba(255, 255, 255, 0.75) !important;
-    backdrop-filter: blur(12px) saturate(180%);
-    -webkit-backdrop-filter: blur(12px) saturate(180%);
-    border-bottom: 1px solid rgba(27, 45, 74, 0.1);
-}
-
-@media (prefers-color-scheme: dark) {
-    .glass-nav {
-        background: rgba(22, 33, 62, 0.75) !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    }
+    background: #161b22 !important;
+    border-bottom: 1px solid #30363d;
 }
 
 .navbar {
@@ -224,13 +184,13 @@ body {
 }
 
 .nav-link:hover {
-    color: var(--color-primary);
-    background-color: rgba(27, 45, 74, 0.06);
+    color: #e6edf3;
+    background-color: rgba(255, 255, 255, 0.06);
 }
 
 .nav-link.active {
-    color: var(--color-primary);
-    background-color: rgba(27, 45, 74, 0.08);
+    color: #FFD700;
+    background-color: rgba(255, 255, 255, 0.08);
 }
 
 /* Mobile Bottom Nav */
@@ -274,7 +234,7 @@ body {
 }
 
 .mobile-nav-link.active {
-    color: var(--color-primary);
+    color: #FFD700;
 }
 
 .mobile-nav-link.active i {
@@ -344,8 +304,11 @@ body {
 
 h1, h2, h3, h4, h5, h6 {
     color: var(--color-primary-dark);
+    font-family: var(--font-family-display);
     font-weight: var(--font-weight-bold);
     line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 h1 {
@@ -425,8 +388,8 @@ a:hover {
 .form-group select:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(27, 45, 74, 0.1);
+    border-color: #FFD700;
+    box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.15);
 }
 
 .form-input {
@@ -442,8 +405,8 @@ a:hover {
 
 .form-input:focus {
     outline: none;
-    border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(27, 45, 74, 0.1);
+    border-color: #FFD700;
+    box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.15);
 }
 
 /* Stepper Input */
@@ -467,8 +430,8 @@ a:hover {
 }
 
 .stepper-btn:hover {
-    background: var(--color-primary);
-    color: var(--color-bg-lighter);
+    background: #FFD700;
+    color: #0d1117;
 }
 
 .form-control input {
@@ -549,12 +512,13 @@ input[type="checkbox"] {
 }
 
 .btn-primary {
-    background: var(--color-primary);
-    color: var(--color-bg-lighter);
+    background: #FFD700;
+    color: #0d1117;
+    font-weight: var(--font-weight-bold);
 }
 
 .btn-primary:hover {
-    background: var(--color-primary-dark);
+    background: #ffe566;
     box-shadow: var(--shadow-md);
 }
 
@@ -563,14 +527,14 @@ input[type="checkbox"] {
 }
 
 .btn-secondary {
-    background: var(--color-bg-light);
-    color: var(--color-primary);
-    border: 1px solid var(--color-border);
+    background: #161b22;
+    color: #e6edf3;
+    border: 1px solid #30363d;
 }
 
 .btn-secondary:hover {
-    background: var(--color-border);
-    border-color: var(--color-primary);
+    background: #1c2128;
+    border-color: #8b949e;
 }
 
 .btn-danger {
@@ -579,7 +543,7 @@ input[type="checkbox"] {
 }
 
 .btn-danger:hover {
-    background: #ff5252;
+    background: #da3633;
     box-shadow: var(--shadow-md);
 }
 
@@ -589,7 +553,7 @@ input[type="checkbox"] {
 }
 
 .btn-success:hover {
-    background: #24b860;
+    background: #2ea043;
     box-shadow: var(--shadow-md);
 }
 
@@ -856,4 +820,28 @@ input[type="checkbox"] {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+/* Dark Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #0d1117;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #30363d;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #8b949e;
+}
+
+* {
+    scrollbar-width: thin;
+    scrollbar-color: #30363d #0d1117;
 }
