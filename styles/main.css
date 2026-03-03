@@ -214,22 +214,24 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 2px;
     background: none;
     border: none;
     color: var(--color-text-light);
-    font-size: 10px;
+    font-size: 9px;
     font-weight: var(--font-weight-bold);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     flex: 1;
+    min-width: 0;
+    padding: 0 2px;
     height: 100%;
     transition: all 0.2s ease;
 }
 
 .mobile-nav-link i {
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
     stroke-width: 2px;
 }
 
