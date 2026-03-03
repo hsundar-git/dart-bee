@@ -13,9 +13,12 @@ const AppConfig = {
         // Cloud Supabase (uncomment for production)
         // url: 'https://hdiesaupdtjtazkxtylt.supabase.co',
         // anonKey: 'sb_publishable_6y9PlIYK4zl_ry2Cmm79Hw_BE96CJSZ'
-        // Local Supabase (for development/testing)
-        url: 'http://127.0.0.1:54321',
-        anonKey: 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH'
+        // Cloud Supabase (for development/testing)
+        url: 'https://kbkflklrbsszmconffzu.supabase.co',
+        anonKey: 'sb_publishable_sdqSTVGv7W4zhYVhBc4eDQ_7OG_D60s'
+        // Local Supabase
+        // url: 'http://127.0.0.1:54321',
+        // anonKey: 'sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH'
     },
 
     // Storage backend: 'supabase' | 'local'
