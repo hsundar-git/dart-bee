@@ -381,19 +381,29 @@ const Stats = (() => {
      */
     async function getScoreDistribution(playerName) {
         const playerData = await Storage.getPlayerByName(playerName);
-        if (!playerData) return { low: 0, medium: 0, good: 0, high: 0, perfect: 0 };
+        if (!playerData) return { range0_19: 0, range20_39: 0, range40_59: 0, range60_99: 0, range100_139: 0, range140_179: 0, range180: 0 };
 
         const turns = await Storage.getTurnsForPlayer(playerData.id);
 
-        const distribution = { low: 0, medium: 0, good: 0, high: 0, perfect: 0 };
+        const distribution = {
+            range0_19: 0,
+            range20_39: 0,
+            range40_59: 0,
+            range60_99: 0,
+            range100_139: 0,
+            range140_179: 0,
+            range180: 0
+        };
 
         (turns || []).forEach(turn => {
             const score = turn.turn_total || 0;
-            if (score === 180) distribution.perfect++;
-            else if (score >= 140) distribution.high++;
-            else if (score >= 100) distribution.good++;
-            else if (score >= 60) distribution.medium++;
-            else distribution.low++;
+            if (score >= 180) distribution.range180++;
+            else if (score >= 140) distribution.range140_179++;
+            else if (score >= 100) distribution.range100_139++;
+            else if (score >= 60) distribution.range60_99++;
+            else if (score >= 40) distribution.range40_59++;
+            else if (score >= 20) distribution.range20_39++;
+            else distribution.range0_19++;
         });
 
         return distribution;
