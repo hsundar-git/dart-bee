@@ -918,13 +918,13 @@ const App = (() => {
         const showPracticeCheck = document.getElementById('history-show-practice');
         const showIncompleteCheck = document.getElementById('history-show-incomplete');
         
-        await UI.renderGameHistory(
-            playerFilter?.value || '', 
-            sortSelect?.value || 'newest', 
-            1, 
-            showPracticeCheck?.checked || false,
-            showIncompleteCheck?.checked || false
-        );
+                await UI.renderGameHistory(
+                    playerFilter?.value || '', 
+                    sortSelect?.value || 'newest', 
+                    1, 
+                    showPracticeCheck?.checked || false,
+                    showIncompleteCheck?.checked ? true : false
+                );
     }
 
     /**

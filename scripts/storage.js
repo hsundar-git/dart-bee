@@ -220,22 +220,25 @@ const Storage = (() => {
 
             // --- Apply consistent filters to both paths ---
             
-            // Practice filter: If NOT including practice, strictly show non-practice
-            if (filters.includePractice !== true) {
+            // Practice filter: If true/false, strictly filter. If null/undefined, show both.
+            if (filters.includePractice === true) {
+                query = query.eq('is_practice', true);
+            } else if (filters.includePractice === false) {
                 query = query.eq('is_practice', false);
             }
-            // If includePractice is true, we don't add a filter (shows both)
 
             // Completion filter:
-            if (filters.showIncomplete === true) {
-                // Showing everything (no filter needed)
-            } else if (filters.completed === false) {
-                // Explicitly only incomplete
+            // Completion filter:
+            // - If showIncomplete is true, strictly show ONLY incomplete
+            // - If completed is true, strictly show ONLY completed
+            // - If completed is false, strictly show ONLY incomplete
+            // - If both are null/undefined (default), show EVERYTHING
+            if (filters.showIncomplete === true || filters.completed === false) {
                 query = query.is('completed_at', null);
-            } else {
-                // Default: only show completed
+            } else if (filters.completed === true || filters.showIncomplete === false) {
                 query = query.not('completed_at', 'is', null);
             }
+            // If both are undefined, no filter is applied (shows all)
 
             if (filters.active !== undefined) {
                 query = query.eq('is_active', filters.active);
@@ -466,8 +469,11 @@ const Storage = (() => {
 
             if (updates.completed_at && updates.players) {
                 console.log('=== updateGame Winner Detection DEBUG ===');
+                // Priority 1: finish_rank === 1
                 let winner = updates.players.find(p => p.finish_rank === 1);
-                if (!winner) winner = updates.players.find(p => p.winner);
+                // Priority 2: winner property is true
+                if (!winner) winner = updates.players.find(p => p.winner === true);
+                // Priority 3: fallback to lowest score
                 if (!winner) {
                     const sorted = [...updates.players].sort((a, b) =>
                         (a.currentScore || a.score || 0) - (b.currentScore || b.score || 0)
@@ -476,6 +482,7 @@ const Storage = (() => {
                 }
 
                 if (winner) {
+                    console.log(`  Detected winner: ${winner.name}`);
                     const { data: playerData } = await sb
                         .from('players')
                         .select('id')
@@ -484,6 +491,7 @@ const Storage = (() => {
 
                     if (playerData) {
                         gameUpdates.winner_id = playerData.id;
+                        console.log(`  Set winner_id to: ${playerData.id}`);
                     }
                 }
             }

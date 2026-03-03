@@ -321,6 +321,7 @@ const UI = (() => {
             // Get interrupted games (active, not completed)
             const { games: interruptedGames } = await Storage.getGamesPaginated(1, 10, {
                 completed: false,
+                active: true, // MUST be active
                 includePractice: false // Don't show practice in interrupted by default
             });
 
@@ -1057,6 +1058,7 @@ const UI = (() => {
      */
     async function renderGameHistory(filter = '', sortOrder = 'newest', page = 1, includePractice = false, showIncomplete = false) {
         const container = document.getElementById('games-history-list');
+        console.log('Filtering history:', { filter, includePractice, showIncomplete });
 
         // OPTIMIZED: Database-level pagination and filtering
         const { games: paginatedGames, pagination } = await Storage.getGamesPaginated(
@@ -1201,8 +1203,9 @@ const UI = (() => {
                 profilePaginationState.gamesPerPage,
                 {
                     playerName: playerName,
-                    completed: undefined, // Show all
-                    includePractice: true  // Show practice too in profile
+                    completed: undefined,
+                    showIncomplete: null, // Show both complete and incomplete
+                    includePractice: null  // Show both practice and regular
                 }
             );
 
