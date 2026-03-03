@@ -437,15 +437,23 @@
 
                 <!-- Filters -->
                 <div class="filter-section">
-                    <input type="text" id="history-player-filter" placeholder="Filter by player..." class="form-input">
+                    <select id="history-player-filter" class="form-input">
+                        <option value="">All Players</option>
+                    </select>
                     <select id="history-sort" class="form-input">
                         <option value="newest">Newest First</option>
                         <option value="oldest">Oldest First</option>
                     </select>
-                    <label class="filter-checkbox-label">
-                        <input type="checkbox" id="history-show-practice">
-                        <span>Show Practice</span>
-                    </label>
+                    <div class="filter-checkbox-group">
+                        <label class="filter-checkbox-label">
+                            <input type="checkbox" id="history-show-practice">
+                            <span>Show Practice</span>
+                        </label>
+                        <label class="filter-checkbox-label">
+                            <input type="checkbox" id="history-show-incomplete">
+                            <span>Show Incomplete</span>
+                        </label>
+                    </div>
                 </div>
 
                 <!-- Games List -->
@@ -491,10 +499,6 @@
                             <button class="filter-btn active" data-filter="all-time">All Time</button>
                             <button class="filter-btn" data-filter="30-days">30 Days</button>
                             <button class="filter-btn" data-filter="7-days">7 Days</button>
-                        </div>
-                        <div class="search-box">
-                            <i data-lucide="search"></i>
-                            <input type="text" id="leaderboard-search" placeholder="Search player..." class="form-input">
                         </div>
                     </div>
 

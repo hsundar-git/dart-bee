@@ -177,41 +177,64 @@ const Storage = (() => {
             const sb = ensureInitialized();
             const offset = (page - 1) * perPage;
 
-            let query = sb
-                .from('games')
-                .select(`
-                    *,
-                    winner:players!winner_id(id, name),
-                    game_players(
-                        id,
-                        player_order,
-                        starting_score,
-                        final_score,
-                        is_winner,
-                        finish_rank,
-                        finish_round,
-                        total_turns,
-                        total_darts,
-                        total_score,
-                        avg_per_turn,
-                        player:players(id, name)
-                    )
-                `, { count: 'exact' });
+            let query;
+            if (filters.playerName) {
+                const { data: playerData } = await sb
+                    .from('players')
+                    .select('id')
+                    .eq('name', filters.playerName)
+                    .maybeSingle();
 
-            const sortOrder = filters.sortOrder || 'newest';
-            query = query.order('created_at', { ascending: sortOrder === 'oldest' });
+                if (!playerData) {
+                    return { games: [], pagination: { page: 1, perPage, total: 0, totalPages: 0, hasNext: false, hasPrev: false } };
+                }
 
-            // Filter out practice games by default
-            if (filters.includePractice !== true) {
-                query = query.or('is_practice.is.null,is_practice.eq.false');
+                query = sb
+                    .from('games')
+                    .select(`
+                        *,
+                        winner:players!winner_id(id, name),
+                        game_players!inner(player_id),
+                        all_players:game_players(
+                            id, player_order, starting_score, final_score, is_winner,
+                            finish_rank, finish_round, total_turns, total_darts,
+                            total_score, max_dart, max_turn, avg_per_turn,
+                            player:players(id, name)
+                        )
+                    `, { count: 'exact' })
+                    .eq('game_players.player_id', playerData.id);
+            } else {
+                query = sb
+                    .from('games')
+                    .select(`
+                        *,
+                        winner:players!winner_id(id, name),
+                        game_players(
+                            id, player_order, starting_score, final_score, is_winner,
+                            finish_rank, finish_round, total_turns, total_darts,
+                            total_score, max_dart, max_turn, avg_per_turn,
+                            player:players(id, name)
+                        )
+                    `, { count: 'exact' });
             }
 
-            if (filters.completed !== undefined) {
-                if (filters.completed) {
-                    query = query.not('completed_at', 'is', null);
-                } else {
-                    query = query.is('completed_at', null);
-                }
+            // --- Apply consistent filters to both paths ---
+            
+            // Practice filter: If NOT including practice, strictly show non-practice
+            if (filters.includePractice !== true) {
+                query = query.eq('is_practice', false);
+            }
+            // If includePractice is true, we don't add a filter (shows both)
+
+            // Completion filter:
+            if (filters.showIncomplete === true) {
+                // Showing everything (no filter needed)
+            } else if (filters.completed === false) {
+                // Explicitly only incomplete
+                query = query.is('completed_at', null);
+            } else {
+                // Default: only show completed
+                query = query.not('completed_at', 'is', null);
             }
 
             if (filters.active !== undefined) {
@@ -222,23 +245,8 @@ const Storage = (() => {
                 query = query.eq('device_id', filters.deviceId);
             }
 
-            if (filters.playerName) {
-                const { data: playerData } = await sb
-                    .from('players')
-                    .select('id')
-                    .ilike('name', `%${filters.playerName}%`)
-                    .limit(10);
-
-                if (playerData && playerData.length > 0) {
-                    const playerIds = playerData.map(p => p.id);
-                    query = query.in('game_players.player_id', playerIds);
-                } else {
-                    return {
-                        games: [],
-                        pagination: { page: 1, perPage, total: 0, totalPages: 0, hasNext: false, hasPrev: false }
-                    };
-                }
-            }
+            const sortOrder = filters.sortOrder || 'newest';
+            query = query.order('created_at', { ascending: sortOrder === 'oldest' });
 
             const { data, count, error } = await query.range(offset, offset + perPage - 1);
 
@@ -284,7 +292,10 @@ const Storage = (() => {
     }
 
     function transformGameFromDB(dbGame) {
-        const sortedGamePlayers = (dbGame.game_players || [])
+        // Use all_players if available (from paginated search), otherwise game_players
+        const rawPlayers = dbGame.all_players || dbGame.game_players || [];
+        
+        const sortedGamePlayers = rawPlayers
             .sort((a, b) => a.player_order - b.player_order);
 
         const players = sortedGamePlayers.map(gp => ({
@@ -310,7 +321,9 @@ const Storage = (() => {
                 }
             }));
 
-        const currentPlayerIndex = calculateCurrentPlayerIndex(sortedGamePlayers, players);
+        const currentPlayerIndex = (dbGame.current_player_index !== undefined && dbGame.current_player_index !== null)
+            ? dbGame.current_player_index
+            : calculateCurrentPlayerIndex(sortedGamePlayers, players);
 
         return {
             id: dbGame.id,
@@ -615,7 +628,10 @@ const Storage = (() => {
     }
 
     function transformGameWithTurns(dbGame) {
-        const sortedGamePlayers = (dbGame.game_players || [])
+        // Use all_players if available (from paginated search), otherwise game_players
+        const rawPlayers = dbGame.all_players || dbGame.game_players || [];
+
+        const sortedGamePlayers = rawPlayers
             .sort((a, b) => a.player_order - b.player_order);
 
         const players = sortedGamePlayers.map(gp => {
@@ -651,7 +667,9 @@ const Storage = (() => {
                 };
             });
 
-        const currentPlayerIndex = calculateCurrentPlayerIndex(sortedGamePlayers, players);
+        const currentPlayerIndex = (dbGame.current_player_index !== undefined && dbGame.current_player_index !== null)
+            ? dbGame.current_player_index
+            : calculateCurrentPlayerIndex(sortedGamePlayers, players);
 
         return {
             id: dbGame.id,
@@ -817,10 +835,10 @@ const Storage = (() => {
     async function _getPlayers() {
         try {
             const sb = ensureInitialized();
+            // Use player_stats view instead of players table (already filters deleted)
             const { data, error } = await sb
-                .from('players')
+                .from('player_stats')
                 .select('*')
-                .or('is_deleted.is.null,is_deleted.eq.false')
                 .order('created_at', { ascending: false });
 
             if (error) {
@@ -911,7 +929,8 @@ const Storage = (() => {
                     )
                 `)
                 .eq('player_id', playerData.id)
-                .or('game.is_practice.is.null,game.is_practice.eq.false', { foreignTable: 'games' })
+                .or('is_practice.is.null,is_practice.eq.false', { foreignTable: 'games' })
+                .gt('total_turns', 0)
                 .order('created_at', { referencedTable: 'games', ascending: false })
                 .limit(limit);
 
@@ -1338,7 +1357,8 @@ const Storage = (() => {
         if (isLocal()) return LocalStorageBackend.getPlayerByName(name);
         try {
             const sb = ensureInitialized();
-            const { data, error } = await sb.from('players').select('*').eq('name', name).single();
+            // Use player_stats view instead of players table
+            const { data, error } = await sb.from('player_stats').select('*').eq('name', name).single();
             if (error) return null;
             return data;
         } catch (e) { return null; }
@@ -1357,6 +1377,7 @@ const Storage = (() => {
         if (isLocal()) return LocalStorageBackend.getPlayerLeaderboard(sortCol, limit);
         try {
             const sb = ensureInitialized();
+            // player_leaderboard is now a VIEW, no refresh needed
             let query = sb.from('player_leaderboard').select('*');
             if (sortCol) {
                 const ascending = sortCol.startsWith('rank_by_');
@@ -1375,12 +1396,26 @@ const Storage = (() => {
             const sb = ensureInitialized();
             let query = sb.from('games').select(`
                 id, created_at, completed_at,
-                game_players!inner(player_id, is_winner, total_darts, total_score, total_turns, max_turn, count_180s, player:players!inner(id, name))
-            `).not('completed_at', 'is', null).or('is_practice.is.null,is_practice.eq.false');
+                game_players!inner(
+                    player_id, is_winner, total_darts, total_score, total_turns, max_turn, count_180s, 
+                    player:players!inner(id, name, is_deleted)
+                )
+            `)
+            .not('completed_at', 'is', null)
+            .eq('is_practice', false);
+            
             if (since) query = query.gte('created_at', since);
-            const { data } = await query;
+            const { data, error } = await query;
+            
+            if (error) {
+                console.error('Error fetching time-filtered games:', error);
+                return [];
+            }
             return data || [];
-        } catch (e) { return []; }
+        } catch (e) { 
+            console.error('getCompletedGamesWithPlayerStats error:', e);
+            return []; 
+        }
     }
 
     async function getGamePlayersByGameIds(gameIds) {
@@ -1442,7 +1477,8 @@ const Storage = (() => {
         if (isLocal()) return LocalStorageBackend.countPlayersWithGames();
         try {
             const sb = ensureInitialized();
-            const { count } = await sb.from('players').select('*', { count: 'exact', head: true }).gt('total_games_played', 0).or('is_deleted.is.null,is_deleted.eq.false');
+            // Use player_stats view instead of players table (already filters deleted)
+            const { count } = await sb.from('player_stats').select('*', { count: 'exact', head: true }).gt('total_games_played', 0);
             return count || 0;
         } catch (e) { return 0; }
     }
@@ -1465,7 +1501,8 @@ const Storage = (() => {
         if (isLocal()) return LocalStorageBackend.getAllPlayersWithStats();
         try {
             const sb = ensureInitialized();
-            const { data } = await sb.from('players').select('*').gt('total_games_played', 0).or('is_deleted.is.null,is_deleted.eq.false');
+            // Use player_stats view instead of players table (already filters deleted)
+            const { data } = await sb.from('player_stats').select('*').gt('total_games_played', 0);
             return data || [];
         } catch (e) { return []; }
     }

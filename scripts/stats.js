@@ -149,7 +149,10 @@ const Stats = (() => {
         (games || []).forEach(game => {
             (game.game_players || []).forEach(gp => {
                 const playerName = gp.player?.name;
-                if (!playerName) return;
+                const isDeleted = gp.player?.is_deleted;
+                
+                if (!playerName || isDeleted === true) return;
+                
                 if (!playerStatsMap[playerName]) {
                     playerStatsMap[playerName] = {
                         gamesPlayed: 0, gamesWon: 0, totalDarts: 0, totalScore: 0,
@@ -457,6 +460,7 @@ const Stats = (() => {
                 id: game.id,
                 date: new Date(game.created_at).toLocaleDateString(),
                 avgPerDart: darts > 0 ? (score / darts).toFixed(2) : '0.00',
+                avgPerTurn: turns > 0 ? (score / turns).toFixed(2) : '0.00',
                 won: playerData?.winner || false,
                 darts: darts,
                 score: score,

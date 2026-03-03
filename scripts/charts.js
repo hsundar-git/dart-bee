@@ -218,7 +218,7 @@ const Charts = (() => {
         // Reverse to show chronological order (oldest first)
         const games = [...recentGames].reverse();
         const labels = games.map((g, i) => `Game ${i + 1}`);
-        const avgPerTurn = games.map(g => g.turns > 0 ? (g.score / g.turns).toFixed(2) : 0);
+        const avgPerTurn = games.map(g => g.avgPerTurn || (g.turns > 0 ? (g.score / g.turns).toFixed(2) : 0));
 
         const options = getDefaultOptions('line');
         options.plugins.legend.display = false;
