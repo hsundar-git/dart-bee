@@ -202,11 +202,18 @@ body {
     right: 0;
     height: 64px;
     z-index: 1000;
-    padding: 0 var(--spacing-md);
+    padding: 0 4px;
     border-top: 1px solid var(--color-border);
     border-bottom: none;
-    justify-content: space-around;
     align-items: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+}
+
+.mobile-bottom-nav::-webkit-scrollbar {
+    display: none;
 }
 
 .mobile-nav-link {
@@ -214,24 +221,24 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 3px;
     background: none;
     border: none;
     color: var(--color-text-light);
-    font-size: 9px;
+    font-size: 10px;
     font-weight: var(--font-weight-bold);
     text-transform: uppercase;
-    letter-spacing: 0.3px;
-    flex: 1;
-    min-width: 0;
-    padding: 0 2px;
+    letter-spacing: 0.4px;
+    flex: 0 0 auto;
+    min-width: 56px;
+    padding: 0 8px;
     height: 100%;
     transition: all 0.2s ease;
 }
 
 .mobile-nav-link i {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     stroke-width: 2px;
 }
 
