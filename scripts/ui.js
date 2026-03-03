@@ -2372,12 +2372,13 @@ const UI = (() => {
 
         container.innerHTML = html;
 
-        // Render charts
+        // Render charts and init interactions
         setTimeout(() => {
             Charts.createWinLossChart('playerWinLossChart', stats.gamesWon, stats.gamesPlayed - stats.gamesWon);
             Charts.createStatsRadarChart('playerRadarChart', stats);
             Charts.createPerformanceChart('playerPerformanceChart', recentPerformance);
             Charts.createScoreDistributionChart('playerScoreDistChart', scoreDistribution);
+            StatsWidgets.initHeatmapInteractions();
         }, 50);
     }
 
