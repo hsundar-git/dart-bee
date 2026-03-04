@@ -831,7 +831,6 @@ const Storage = (() => {
     async function _getPlayers() {
         try {
             const sb = ensureInitialized();
-            // Use player_stats view instead of players table (already filters deleted)
             const { data, error } = await sb
                 .from('player_stats')
                 .select('*')
@@ -1353,7 +1352,6 @@ const Storage = (() => {
         if (isLocal()) return LocalStorageBackend.getPlayerByName(name);
         try {
             const sb = ensureInitialized();
-            // Use player_stats view instead of players table
             const { data, error } = await sb.from('player_stats').select('*').eq('name', name).single();
             if (error) return null;
             return data;
@@ -1473,7 +1471,6 @@ const Storage = (() => {
         if (isLocal()) return LocalStorageBackend.countPlayersWithGames();
         try {
             const sb = ensureInitialized();
-            // Use player_stats view instead of players table (already filters deleted)
             const { count } = await sb.from('player_stats').select('*', { count: 'exact', head: true }).gt('total_games_played', 0);
             return count || 0;
         } catch (e) { return 0; }
@@ -1497,7 +1494,6 @@ const Storage = (() => {
         if (isLocal()) return LocalStorageBackend.getAllPlayersWithStats();
         try {
             const sb = ensureInitialized();
-            // Use player_stats view instead of players table (already filters deleted)
             const { data } = await sb.from('player_stats').select('*').gt('total_games_played', 0);
             return data || [];
         } catch (e) { return []; }

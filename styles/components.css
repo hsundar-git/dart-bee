@@ -2587,28 +2587,29 @@
    PODIUM STYLES
    ============================ */
 
-.podium-container {
+.live-rankings .podium-container {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
-    gap: 12px;
+    gap: 8px;
     align-items: flex-end;
-    margin-bottom: 16px;
-    padding: 16px 8px;
-    background: #0d1117;
-    border-radius: 8px;
-    min-height: 180px;
-    border: 1px solid #30363d;
+    margin-bottom: 4px;
+    padding: 4px 2px;
+    background: transparent;
+    border-radius: 6px;
+    min-height: 85px;
+    border: none;
 }
 
-.podium-position {
+.live-rankings .podium-position {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: flex-end;
-    padding: 12px;
+    padding: 4px 2px;
     background: #161b22;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 6px;
+    min-width: 20px;
+    text-shadow: none;
     animation: podiumAppear 0.6s ease-out;
 }
 
@@ -2623,69 +2624,73 @@
     }
 }
 
-.podium-position.gold {
+.live-rankings .podium-position.gold {
     grid-column: 2;
-    transform: scale(1.05);
-    box-shadow: 0 0 16px rgba(255, 215, 0, 0.15);
+    border: 1px solid rgba(255, 215, 0, 0.4);
+    height: auto;
     background: #161b22;
-    border: 1px solid #ffd700;
+    box-shadow: none;
 }
 
-.podium-position.silver {
+.live-rankings .podium-position.silver {
     grid-column: 1;
-    transform: scale(0.95);
-    box-shadow: 0 4px 12px rgba(192, 192, 192, 0.2);
+    border: 1px solid rgba(192, 192, 192, 0.3);
+    height: auto;
+    background: #161b22;
+    box-shadow: none;
 }
 
-.podium-position.bronze {
+.live-rankings .podium-position.bronze {
     grid-column: 3;
-    transform: scale(0.9);
-    box-shadow: 0 4px 12px rgba(205, 127, 50, 0.2);
+    border: 1px solid rgba(205, 127, 50, 0.3);
+    height: auto;
+    background: #161b22;
+    box-shadow: none;
 }
 
-.podium-medal {
-    font-size: 32px;
-    margin-bottom: 8px;
+.live-rankings .podium-medal {
+    font-size: 12px;
+    margin-bottom: 1px;
+    animation: none;
 }
 
-.podium-name {
-    font-weight: 700;
-    font-size: 14px;
+.live-rankings .podium-name {
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 8px;
     color: #e6edf3;
     text-align: center;
-    margin-bottom: 4px;
+    text-shadow: none;
     word-break: break-word;
     max-width: 100%;
+    margin-bottom: 0
 }
 
-.podium-rank {
-    font-size: 11px;
-    color: #e6edf3;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+.live-rankings .podium-rank {
+    display: none;
 }
 
-.podium-height {
-    width: 100%;
-    height: 40px;
+.live-rankings .podium-height {
+    width: 60%;
+    height: 20px;
     background: #30363d;
-    border-radius: 4px 4px 0 0;
-    margin-top: 8px;
+    border-radius: 2px 2px 0 0;
+    margin-top: 1px;
+    margin-bottom: 1px;
 }
 
-.podium-height.gold-height {
-    height: 60px;
+.live-rankings .podium-height.gold-height {
+    height: 28px;
     background: linear-gradient(180deg, #ffd700 0%, #ffed4e 100%);
 }
 
-.podium-position.silver .podium-height {
-    height: 48px;
+.live-rankings .podium-position.silver .podium-height {
+    height: 20px;
     background: linear-gradient(180deg, #c0c0c0 0%, #e8e8e8 100%);
 }
 
-.podium-position.bronze .podium-height {
-    height: 36px;
+.live-rankings .podium-position.bronze .podium-height {
+    height: 14px;
     background: linear-gradient(180deg, #cd7f32 0%, #d9a76b 100%);
 }
 
@@ -2715,9 +2720,9 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 8px 10px;
+    padding: 8px 14px;
     background: #161b22;
-    border-radius: 6px;
+    border-radius: 999px;
     font-size: 13px;
     animation: rankingAppear 0.4s ease-out;
     transition: all 0.3s ease-out;
@@ -6551,32 +6556,56 @@
    ============================ */
 
 .detail-stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: var(--spacing-lg);
-    margin-bottom: var(--spacing-2xl);
+    display: flex;
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-sm);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+    padding-bottom: 4px;
+}
+
+.detail-stats-grid .detail-player-card {
+    min-width: 180px;
+    max-width: 220px;
+    flex-shrink: 0;
+    scroll-snap-align: start;
+}
+
+.detail-stats-grid::-webkit-scrollbar {
+    height: 4px;
+}
+
+.detail-stats-grid::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.detail-stats-grid::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 2px;
 }
 
 .detail-player-card {
-    background: rgba(255, 255, 255, 0.7);
+    background: #161b22;
     border-radius: var(--radius-xl);
-    padding: var(--spacing-xl);
-    box-shadow: 0 4px 15px rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    padding: var(--spacing-lg);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    border: 1px solid #30363d;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
 }
 
 .detail-player-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 12px 25px rgba(27, 45, 74, 0.12);
-    background: #161b22;
+    transform: translateY(-3px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.1);
 }
 
 .detail-player-card.winner {
-    border-color: var(--color-accent);
-    background: linear-gradient(135deg, rgba(255, 215, 0, 0.1) 0%, rgba(255, 255, 255, 0.8) 100%);
+    border-color: rgba(255, 215, 0, 0.3);
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.08) 0%, #161b22 100%);
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.1);
 }
 
 .detail-player-card.winner::after {
@@ -6584,34 +6613,34 @@
     position: absolute;
     top: 12px;
     right: -25px;
-    background: var(--color-accent);
-    color: var(--color-primary-dark);
+    background: #FFD700;
+    color: #1a1a2e;
     font-size: 10px;
     font-weight: 700;
     padding: 4px 30px;
     transform: rotate(45deg);
     letter-spacing: 1px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
 }
 
 .detail-player-header {
     display: flex;
     align-items: center;
     gap: var(--spacing-md);
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: var(--spacing-md);
 }
 
 .detail-player-rank {
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     font-weight: 700;
-    color: var(--color-primary);
-    min-width: 40px;
+    color: var(--color-text-light);
+    min-width: 30px;
     font-variant-numeric: tabular-nums;
 }
 
 .detail-player-card.winner .detail-player-rank {
-    color: #b8860b;
-    font-size: 2rem;
+    color: #FFD700;
+    font-size: 1.4rem;
 }
 
 .detail-player-name {
@@ -6641,12 +6670,11 @@
 }
 
 .detail-progress-bar {
-    height: 8px;
-    background: var(--color-bg-light);
-    border-radius: 4px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 3px;
     overflow: hidden;
-    margin-bottom: var(--spacing-xl);
-    box-shadow: inset 0 1px 2px rgba(0,0,0,0.05);
+    margin-bottom: var(--spacing-md);
 }
 
 .detail-progress-fill {
@@ -6678,7 +6706,7 @@
 .detail-player-stats .stat-value {
     font-size: 1.1rem;
     font-weight: 700;
-    color: var(--color-primary-dark);
+    color: #e6edf3;
     line-height: 1.2;
 }
 
@@ -6691,8 +6719,7 @@
 }
 
 .detail-player-card.winner .stat-label {
-    color: var(--color-primary-dark);
-    opacity: 0.7;
+    color: var(--color-text-light);
 }
 
 /* ============================
@@ -6730,17 +6757,7 @@
     color: var(--color-primary-dark);
 }
 
-/* Compact player card adjustments */
-.detail-player-card {
-    padding: var(--spacing-md);
-}
-
-.detail-player-header {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-xs);
-    margin-bottom: var(--spacing-sm);
-}
+/* Compact player card adjustments - merged into main rules above */
 
 .score-badge {
     margin-left: auto;
@@ -6752,8 +6769,8 @@
 }
 
 .detail-player-card.winner .score-badge {
-    background: #e8f5e9;
-    color: #2e7d32;
+    background: rgba(255, 215, 0, 0.15);
+    color: #FFD700;
 }
 
 /* Remove large score display - now in header */

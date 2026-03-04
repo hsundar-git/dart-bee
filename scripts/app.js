@@ -1296,7 +1296,11 @@ const App = (() => {
             // Calculate turn total for haptic feedback
             const turnTotal = darts.reduce((a, b) => parseInt(a) + parseInt(b), 0);
 
-            await Storage.updateGame(currentGame.id, currentGame);
+            // Save to DB in background (don't block UI)
+            Storage.updateGame(currentGame.id, currentGame).catch(err => {
+                console.error('Failed to save game:', err);
+                gameNeedsSave = true;
+            });
 
             // Determine if round completed (current_turn increased)
             const roundCompleted = currentGame.current_turn > previousTurn;
