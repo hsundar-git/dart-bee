@@ -340,16 +340,32 @@ const Charts = (() => {
             return null;
         }
 
-        const opponents = Object.keys(headToHeadData).slice(0, 6); // Limit to top 6
-        const wins = opponents.map(o => headToHeadData[o].wins);
-        const losses = opponents.map(o => headToHeadData[o].losses);
+        // Sort by total games played
+        const sorted = Object.entries(headToHeadData)
+            .sort((a, b) => (b[1].wins + b[1].losses) - (a[1].wins + a[1].losses))
+            .slice(0, 6);
+        const opponents = sorted.map(([name]) => name);
+        const wins = sorted.map(([, r]) => r.wins);
+        const losses = sorted.map(([, r]) => r.losses);
 
         const options = getDefaultOptions('bar');
         options.plugins.legend.position = 'bottom';
+        options.plugins.legend.labels.usePointStyle = true;
+        options.plugins.legend.labels.pointStyle = 'circle';
         options.scales.y.beginAtZero = true;
         options.scales.y.stacked = true;
         options.scales.x.stacked = true;
+        options.scales.x.grid = { display: false };
+        options.scales.y.grid = { color: 'rgba(255, 255, 255, 0.05)' };
         options.indexAxis = 'y';
+        options.plugins.tooltip.callbacks = {
+            label: function(context) {
+                const idx = context.dataIndex;
+                const total = wins[idx] + losses[idx];
+                const pct = total > 0 ? Math.round((context.raw / total) * 100) : 0;
+                return `${context.dataset.label}: ${context.raw} (${pct}%)`;
+            }
+        };
 
         chartInstances[canvasId] = new Chart(ctx, {
             type: 'bar',
@@ -359,14 +375,20 @@ const Charts = (() => {
                     {
                         label: 'Wins',
                         data: wins,
-                        backgroundColor: c.accentGreen,
-                        borderRadius: 8
+                        backgroundColor: 'rgba(63, 185, 80, 0.8)',
+                        hoverBackgroundColor: c.accentGreen,
+                        borderRadius: 4,
+                        borderSkipped: false,
+                        barPercentage: 0.6
                     },
                     {
                         label: 'Losses',
                         data: losses,
-                        backgroundColor: c.accentRed,
-                        borderRadius: 8
+                        backgroundColor: 'rgba(248, 81, 73, 0.8)',
+                        hoverBackgroundColor: c.accentRed,
+                        borderRadius: 4,
+                        borderSkipped: false,
+                        barPercentage: 0.6
                     }
                 ]
             },

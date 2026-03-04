@@ -1450,37 +1450,96 @@
 .head-to-head-list {
     display: flex;
     flex-direction: column;
-    gap: var(--spacing-md);
+    gap: 8px;
 }
 
 .h2h-card {
+    padding: 6px 12px;
+    background: #161b22;
+    border-radius: var(--radius-lg);
+    border: 1px solid #30363d;
+    transition: all 0.2s ease;
+}
+
+.h2h-card:hover {
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.h2h-card.h2h-ahead {
+    border-left: 3px solid var(--color-success);
+}
+
+.h2h-card.h2h-behind {
+    border-left: 3px solid var(--color-error);
+}
+
+.h2h-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: var(--spacing-lg);
-    background: var(--color-bg-light);
-    border-radius: var(--radius-md);
+    margin-bottom: 6px;
 }
 
 .h2h-opponent {
-    font-weight: var(--font-weight-semibold);
-    color: var(--color-text-dark);
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: #e6edf3;
 }
 
-.h2h-record {
+.h2h-total {
+    font-size: 0.7rem;
+    color: var(--color-text-light);
+}
+
+.h2h-bar-row {
     display: flex;
-    gap: var(--spacing-lg);
-    font-size: var(--font-size-sm);
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+}
+
+.h2h-bar-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    max-width: 360px;
+    margin: 0 auto;
+}
+
+.h2h-pct {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--color-text-light);
+}
+
+.h2h-bar-container {
+    display: flex;
+    width: 100%;
+    height: 10px;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.h2h-bar-win {
+    background: var(--color-success);
+    border-radius: 999px;
+}
+
+.h2h-bar-loss {
+    background: var(--color-error);
+    border-radius: 999px;
 }
 
 .h2h-wins {
     color: var(--color-success);
-    font-weight: var(--font-weight-bold);
+    font-weight: 700;
 }
 
 .h2h-losses {
     color: var(--color-error);
-    font-weight: var(--font-weight-bold);
+    font-weight: 700;
 }
 
 /* ============================
@@ -3497,10 +3556,6 @@
     height: 220px;
 }
 
-.chart-container-h2h {
-    height: 200px;
-    margin-bottom: var(--spacing-lg);
-}
 
 .chart-container-leaderboard {
     height: 220px;

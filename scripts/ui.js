@@ -1852,22 +1852,35 @@ const UI = (() => {
             </div>
         `;
 
-        // Head-to-Head section with chart
+        // Head-to-Head section with inline bars
         if (Object.keys(stats.headToHead).length > 0) {
             html += `
                 <div class="profile-section">
                     <h3>Head-to-Head Records</h3>
-                    <div class="chart-container chart-container-h2h">
-                        <canvas id="headToHeadChart"></canvas>
-                    </div>
                     <div class="head-to-head-list">
-                        ${Object.entries(stats.headToHead).map(([opponent, record]) => {
+                        ${Object.entries(stats.headToHead)
+                            .sort((a, b) => (b[1].wins + b[1].losses) - (a[1].wins + a[1].losses))
+                            .map(([opponent, record]) => {
                             const total = record.wins + record.losses;
+                            const winPct = total > 0 ? Math.round((record.wins / total) * 100) : 0;
+                            const isAhead = record.wins > record.losses;
+                            const isTied = record.wins === record.losses;
+                            const lossPct = 100 - winPct;
                             return `
-                                <div class="h2h-card">
-                                    <div class="h2h-opponent">${opponent}</div>
-                                    <div class="h2h-record">
+                                <div class="h2h-card ${isAhead ? 'h2h-ahead' : isTied ? '' : 'h2h-behind'}">
+                                    <div class="h2h-top">
+                                        <span class="h2h-opponent">${opponent}</span>
+                                        <span class="h2h-total">${total} games</span>
+                                    </div>
+                                    <div class="h2h-bar-row">
                                         <span class="h2h-wins">${record.wins}W</span>
+                                        <div class="h2h-bar-wrap">
+                                            <div class="h2h-bar-container">
+                                                <div class="h2h-bar-win" style="width: ${winPct}%"></div>
+                                                <div class="h2h-bar-loss" style="width: ${lossPct}%"></div>
+                                            </div>
+                                            <span class="h2h-pct">${winPct}%</span>
+                                        </div>
                                         <span class="h2h-losses">${record.losses}L</span>
                                     </div>
                                 </div>
@@ -1919,10 +1932,7 @@ const UI = (() => {
             // Score Distribution Bar Chart
             Charts.createScoreDistributionChart('scoreDistributionChart', scoreDistribution);
 
-            // Head-to-Head Chart (if data exists)
-            if (Object.keys(stats.headToHead).length > 0) {
-                Charts.createHeadToHeadChart('headToHeadChart', stats.headToHead);
-            }
+            // Head-to-Head chart removed — inline bars in cards now
 
             // Render paginated game history for this player
             renderPlayerGameHistory(playerName, 1);
