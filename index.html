@@ -395,14 +395,14 @@
                         </div>
 
                         <div class="dart-actions">
-                            <button type="button" class="btn btn-secondary" id="undo-dart-btn">↶ Undo Dart</button>
+                            <button type="button" class="btn btn-secondary" id="undo-dart-btn">⟲ Undo Dart</button>
                             <button type="button" class="btn btn-primary" id="submit-turn-btn">Submit Turn</button>
                         </div>
                     </div>
 
                     <!-- Live Rankings Board (Side by side) -->
                     <div id="live-rankings" class="live-rankings">
-                        <div class="rankings-title">📊 Live Rankings</div>
+                        <div class="rankings-title">🏆 Live Rankings</div>
                         <div id="rankings-list" class="rankings-list">
                             <!-- Dynamically generated -->
                         </div>
@@ -428,7 +428,7 @@
                         </div>
                         <div class="completion-actions">
                             <button class="btn btn-primary btn-large" id="rematch-btn">
-                                <span class="icon">🔄</span>
+                                <span class="icon">♻️</span>
                                 Rematch with Same Players
                             </button>
                             <button class="btn btn-secondary btn-large" id="home-btn">
@@ -600,7 +600,17 @@
             <div id="players-page" class="page">
                 <div class="page-header">
                     <h1>Players</h1>
-                    <button class="btn btn-primary btn-small" id="show-add-player-btn">+ Add Player</button>
+                    <div class="player-search-bar">
+                        <input type="text" id="player-search-input" class="form-input" placeholder="Search...">
+                        <select id="player-sort-select" class="form-input">
+                            <option value="name">Name (A-Z)</option>
+                            <option value="games">Most Games</option>
+                            <option value="wins">Win Rate</option>
+                            <option value="avg">Best Average</option>
+                            <option value="recent">Last Active</option>
+                        </select>
+                        <button class="btn btn-primary btn-small" id="show-add-player-btn">+ Add</button>
+                    </div>
                 </div>
 
                 <!-- Add Player Form (hidden by default) -->

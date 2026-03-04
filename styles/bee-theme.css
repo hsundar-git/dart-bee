@@ -15,14 +15,14 @@
 /* Modern Hero — flat dark surface */
 .modern-hero {
     background: #161b22;
-    padding: var(--spacing-lg) var(--spacing-md);
+    padding: var(--spacing-xl) var(--spacing-lg);
     border-radius: var(--radius-xl);
     color: #e6edf3;
     text-align: center;
     position: relative;
     overflow: hidden;
     box-shadow: none;
-    margin-bottom: var(--spacing-md);
+    margin-bottom: var(--spacing-lg);
     border: 1px solid #30363d;
 }
 
@@ -68,9 +68,9 @@
 
 /* Hero CTA — solid gold, no glow */
 .btn-hero-large {
-    padding: var(--spacing-sm) var(--spacing-xl) !important;
+    padding: var(--spacing-md) var(--spacing-2xl) !important;
     font-size: var(--font-size-base) !important;
-    border-radius: var(--radius-md) !important;
+    border-radius: var(--radius-full) !important;
     box-shadow: none !important;
     position: relative;
     z-index: 1;
@@ -87,11 +87,11 @@
 .quick-action-card {
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid #30363d;
-    border-radius: var(--radius-md);
-    padding: 6px 14px;
+    border-radius: var(--radius-full);
+    padding: 8px 16px;
     color: #8b949e;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all var(--transition-base);
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -122,13 +122,14 @@
     background: #FFD700;
     color: #0d1117;
     border: none;
+    border-radius: var(--radius-full);
     font-family: var(--font-family-display);
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     position: relative;
     overflow: hidden;
-    transition: all 0.2s ease;
+    transition: all var(--transition-base);
 }
 
 .btn-bee::before {

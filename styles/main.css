@@ -55,16 +55,17 @@
     --font-weight-extrabold: 700;
 
     /* Border Radius */
-    --radius-sm: 4px;
-    --radius-md: 6px;
-    --radius-lg: 6px;
-    --radius-xl: 8px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-full: 9999px;
 
     /* Shadow */
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.3);
-    --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.3);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.3);
+    --shadow-xl: 0 20px 30px rgba(0, 0, 0, 0.35);
 
     /* Transitions */
     --transition-fast: 150ms ease-in-out;
@@ -173,8 +174,8 @@ body {
     font-size: var(--font-size-sm);
     font-weight: var(--font-weight-semibold);
     cursor: pointer;
-    border-radius: var(--radius-md);
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: var(--radius-full);
+    transition: all var(--transition-base);
 }
 
 .nav-link i.icon {
@@ -383,7 +384,7 @@ a:hover {
 .form-group select,
 .form-group textarea {
     width: 100%;
-    padding: var(--spacing-md);
+    padding: 12px 16px;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     font-family: var(--font-family);
@@ -402,7 +403,7 @@ a:hover {
 }
 
 .form-input {
-    padding: var(--spacing-md);
+    padding: 12px 16px;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
     font-family: var(--font-family);
@@ -426,16 +427,20 @@ a:hover {
 }
 
 .stepper-btn {
-    padding: var(--spacing-md);
+    padding: 0;
     background: var(--color-bg-light);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
+    border: 2px solid var(--color-border);
+    border-radius: 50%;
     cursor: pointer;
     font-weight: var(--font-weight-bold);
-    font-size: var(--font-size-lg);
+    font-size: 1rem;
     color: var(--color-primary);
-    transition: all var(--transition-base);
-    min-width: 44px;
+    transition: all 0.25s ease;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .stepper-btn:hover {
@@ -446,6 +451,10 @@ a:hover {
 .form-control input {
     text-align: center;
     flex: 1;
+    padding: 10px 14px;
+    font-size: 1.2rem;
+    max-width: 80px;
+    height: 50px;
 }
 
 /* Radio & Checkbox */
@@ -476,12 +485,13 @@ input[type="checkbox"] {
 .player-names-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: var(--spacing-sm);
+    gap: var(--spacing-md);
 }
 
 .player-names-grid input {
     padding: var(--spacing-sm) var(--spacing-md);
     font-size: var(--font-size-sm);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .hidden {
@@ -506,9 +516,9 @@ input[type="checkbox"] {
 }
 
 .btn {
-    padding: var(--spacing-md) var(--spacing-lg);
+    padding: var(--spacing-md) var(--spacing-xl);
     border: none;
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-full);
     font-family: var(--font-family);
     font-size: var(--font-size-md);
     font-weight: var(--font-weight-semibold);
@@ -516,6 +526,7 @@ input[type="checkbox"] {
     transition: all var(--transition-base);
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: var(--spacing-sm);
     text-decoration: none;
 }
@@ -538,12 +549,13 @@ input[type="checkbox"] {
 .btn-secondary {
     background: #161b22;
     color: #e6edf3;
-    border: 1px solid #30363d;
+    border: 2px solid #30363d;
 }
 
 .btn-secondary:hover {
     background: #1c2128;
-    border-color: #8b949e;
+    border-color: #FFD700;
+    color: #FFD700;
 }
 
 .btn-danger {
@@ -567,9 +579,22 @@ input[type="checkbox"] {
 }
 
 .btn-large {
-    padding: var(--spacing-lg) var(--spacing-2xl);
+    height: 58px;
+    padding: 0 var(--spacing-2xl);
     font-size: var(--font-size-lg);
     width: 100%;
+    letter-spacing: 0.5px;
+    margin-top: var(--spacing-md);
+    transition: all 0.25s ease;
+}
+
+.btn-large:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 215, 0, 0.25);
+}
+
+.btn-large:active {
+    transform: translateY(0);
 }
 
 .btn-small {

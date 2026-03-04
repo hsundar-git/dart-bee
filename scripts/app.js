@@ -9,6 +9,7 @@ const App = (() => {
     let isOperationInProgress = false;
     let spectatorSubscription = null;
     let homeSubscription = null;
+    let gameNeedsSave = false;
 
     /**
      * Check if an operation is in progress
@@ -139,7 +140,6 @@ const App = (() => {
      * Handle route changes from router
      */
     async function handleRoute(routeInfo) {
-        console.log('Handling route:', routeInfo);
 
         // Clean up subscriptions when navigating away
         if (isSpectatorMode && routeInfo.route !== 'game') {
@@ -237,32 +237,25 @@ const App = (() => {
             }
 
             // Fetch competition context (tournament/league) if this game is part of one
-            console.log('=== Loading Game Competition Context ===');
             const competitionContext = await Storage.getGameCompetitionContext(gameId);
-            console.log('Competition context result:', competitionContext);
             if (competitionContext) {
                 if (competitionContext.type === 'tournament') {
                     game.tournament_id = competitionContext.tournament_id;
                     game.tournament_match_id = competitionContext.tournament_match_id;
-                    console.log('Game is part of tournament:', competitionContext.tournament_id, 'match:', competitionContext.tournament_match_id);
                 } else if (competitionContext.type === 'league') {
                     game.league_id = competitionContext.league_id;
                     game.league_match_id = competitionContext.league_match_id;
-                    console.log('Game is part of league:', competitionContext.league_id);
                 }
             } else {
-                console.log('No competition context found for this game');
             }
 
             currentGame = game;
             isSpectatorMode = !Device.isGameOwner(game.device_id);
 
             if (isSpectatorMode) {
-                console.log('Opening game in SPECTATOR mode');
-                UI.showToast('📺 Viewing as Spectator', 'info');
+                UI.showToast('🖥️ Viewing as Spectator', 'info');
                 loadSpectatorGame();
             } else {
-                console.log('Opening game in ACTIVE mode');
                 UI.showToast('🎮 Game Resumed', 'info');
                 loadActiveGame();
             }
@@ -683,7 +676,6 @@ const App = (() => {
             backBtn.addEventListener('click', () => {
                 const metric = document.querySelector('.leaderboard-tabs .tab-btn.active')?.dataset.tab || 'avg-turn';
                 const filter = document.querySelector('.time-filters .filter-btn.active')?.dataset.filter || 'all-time';
-                console.log('[back] Navigating to leaderboard:', metric, filter);
                 Router.navigate('leaderboard', { metric, filter });
             });
         }
@@ -748,7 +740,6 @@ const App = (() => {
                     table: 'games'
                 },
                 async () => {
-                    console.log('Games table updated, refreshing home...');
                     await UI.renderRecentGames();
                 }
             )
@@ -759,7 +750,6 @@ const App = (() => {
                     table: 'game_players'
                 },
                 async () => {
-                    console.log('Game players updated, refreshing home...');
                     await UI.renderRecentGames();
                 }
             )
@@ -770,12 +760,10 @@ const App = (() => {
                     table: 'turns'
                 },
                 async () => {
-                    console.log('New turn added, refreshing home...');
                     await UI.renderRecentGames();
                 }
             )
             .subscribe((status) => {
-                console.log('Home subscription status:', status);
             });
     }
 
@@ -841,7 +829,6 @@ const App = (() => {
                     filter: `id=eq.${gameId}`
                 },
                 async (payload) => {
-                    console.log('Game updated (spectator):', payload);
                     // Reload the full game to get player data
                     const updatedGame = await Storage.getGame(gameId);
                     if (updatedGame) {
@@ -882,7 +869,6 @@ const App = (() => {
                 }
             )
             .subscribe((status) => {
-                console.log('Spectator subscription status:', status);
                 if (status === 'SUBSCRIBED') {
                     UI.showLiveIndicator(true);
                 } else if (status === 'CHANNEL_ERROR') {
@@ -1074,6 +1060,34 @@ const App = (() => {
             });
         }
 
+        // Search and sort controls
+        const searchInput = document.getElementById('player-search-input');
+        const sortSelect = document.getElementById('player-sort-select');
+        let searchDebounce = null;
+
+        function getSearchSort() {
+            const query = searchInput ? searchInput.value.trim() : '';
+            const sort = sortSelect ? sortSelect.value : 'name';
+            return { query, sort };
+        }
+
+        if (searchInput) {
+            searchInput.addEventListener('input', () => {
+                clearTimeout(searchDebounce);
+                searchDebounce = setTimeout(() => {
+                    const { query, sort } = getSearchSort();
+                    UI.renderPlayersList(query, sort);
+                }, 300);
+            });
+        }
+
+        if (sortSelect) {
+            sortSelect.addEventListener('change', () => {
+                const { query, sort } = getSearchSort();
+                UI.renderPlayersList(query, sort);
+            });
+        }
+
         // Delegate clicks on players list
         const listContent = document.getElementById('players-list-content');
         if (listContent) {
@@ -1252,13 +1266,11 @@ const App = (() => {
 
         try {
             const inputs = document.querySelectorAll('.dart-input');
-            console.log('Found dart inputs:', inputs.length);
 
             const darts = Array.from(inputs)
                 .map(input => input.value)
                 .filter(v => v);
 
-            console.log('Darts to submit:', darts);
 
             if (darts.length === 0) {
                 UI.showToast('Please enter at least one dart', 'warning');
@@ -1271,7 +1283,7 @@ const App = (() => {
             const previousTurn = currentGame.current_turn;
 
             const result = Game.submitTurn(currentGame, darts);
-            console.log('Turn submission result:', result);
+            gameNeedsSave = true;
 
             if (!result.success) {
                 UI.showToast(result.error, 'error');
@@ -1284,13 +1296,10 @@ const App = (() => {
             // Calculate turn total for haptic feedback
             const turnTotal = darts.reduce((a, b) => parseInt(a) + parseInt(b), 0);
 
-            console.log('Saving game to database...');
             await Storage.updateGame(currentGame.id, currentGame);
-            console.log('Game saved successfully');
 
             // Determine if round completed (current_turn increased)
             const roundCompleted = currentGame.current_turn > previousTurn;
-            console.log(`Round completed: ${roundCompleted} (prev: ${previousTurn}, curr: ${currentGame.current_turn})`);
 
             // Handle bust
             if (result.busted) {
@@ -1327,6 +1336,9 @@ const App = (() => {
                     }, 800);
                 }
             } else {
+                // Compute previous player index before UI update
+                const prevIdx = (currentGame.current_player_index - 1 + currentGame.players.length) % currentGame.players.length;
+
                 // Sound + haptic based on score tier
                 if (turnTotal === 180) {
                     SoundFX.play('maxScore');
@@ -1344,10 +1356,14 @@ const App = (() => {
 
                 // Update rankings: animate only if round completed
                 UI.updateWinnersBoard(result.allRankings || Game.getRankings(currentGame), roundCompleted);
-                // Flash the previous player's score card
-                const prevIdx = (currentGame.current_player_index - 1 + currentGame.players.length) % currentGame.players.length;
                 UI.updateActiveGameUI(currentGame, false);
                 UI.flashScoreCard(prevIdx);
+
+                // Celebrate 180
+                if (turnTotal === 180) {
+                    UI.celebrate180(prevIdx);
+                }
+
                 UI.showToast(`Next: ${result.nextPlayer}`, 'info');
             }
         } catch (error) {
@@ -1366,6 +1382,7 @@ const App = (() => {
         if (!currentGame) return;
 
         const result = Game.undoLastDart(currentGame);
+        gameNeedsSave = true;
         if (!result.success) {
             UI.showToast(result.error, 'warning');
             return;
@@ -1435,7 +1452,7 @@ const App = (() => {
         let rankingsHtml = '<div class="final-rankings">';
         finalRankings.forEach((player, index) => {
             const medals = ['🥇', '🥈', '🥉'];
-            const medal = medals[index] || '🏅';
+            const medal = medals[index] || '🎖️';
             const position = index + 1;
             let suffix = 'th';
             if (position % 10 === 1 && position % 100 !== 11) suffix = 'st';
@@ -1621,10 +1638,6 @@ const App = (() => {
             let competitionType = null;
             let competitionId = null;
 
-            console.log('=== Game Completion - Competition Check ===');
-            console.log('currentGame.tournament_id:', currentGame.tournament_id);
-            console.log('currentGame.tournament_match_id:', currentGame.tournament_match_id);
-            console.log('currentGame.league_id:', currentGame.league_id);
 
             if (currentGame.tournament_id) {
                 competitionType = 'tournament';
@@ -1632,10 +1645,8 @@ const App = (() => {
 
                 // Handle competition game completion
                 const winner = finalRankings[0];
-                console.log('Tournament match completed! Winner:', winner?.name);
                 if (winner) {
                     await handleCompetitionGameComplete(currentGame, winner);
-                    console.log('handleCompetitionGameComplete finished');
                 }
 
                 competitionButton = `
@@ -1666,7 +1677,7 @@ const App = (() => {
             actionsDiv.innerHTML = `
                 ${competitionButton}
                 <button class="btn btn-primary btn-large" id="rematch-btn">
-                    <span class="icon">🔄</span>
+                    <span class="icon">♻️</span>
                     Rematch with Same Players
                 </button>
                 <button class="btn btn-secondary btn-large" id="home-btn">
@@ -1792,11 +1803,9 @@ const App = (() => {
     async function resumeGame() {
         try {
             const games = await Storage.getGames();
-            console.log('Total games in DB:', games.length);
 
             // Debug: log all games and their status
             games.forEach(g => {
-                console.log(`Game ${g.id.substring(0, 8)}: is_active=${g.is_active}, completed_at=${g.completed_at}, players=${g.players.length}, turns=${g.players.reduce((sum, p) => sum + p.turns.length, 0)}`);
             });
 
             // Find an active game that was interrupted (not completed)
@@ -1808,14 +1817,12 @@ const App = (() => {
             );
 
             if (activeGame) {
-                console.log('Found active game to resume:', activeGame.id);
                 currentGame = activeGame;
                 loadActiveGame();
                 UI.showToast('Game resumed', 'info');
                 return true;
             }
 
-            console.log('No active game found to resume');
             return false;
         } catch (error) {
             console.error('Resume game error:', error);
@@ -2321,7 +2328,6 @@ const App = (() => {
                             player2_name: nextMatch.player2_name || undefined,
                             status: nextMatch.status
                         });
-                        console.log('Advanced winner to next match:', nextMatch.id, 'Players:', nextMatch.player1_name, 'vs', nextMatch.player2_name);
                     }
                 }
 
@@ -2334,7 +2340,6 @@ const App = (() => {
                             player2_name: loserMatch.player2_name || undefined,
                             status: loserMatch.status
                         });
-                        console.log('Advanced loser to losers bracket:', loserMatch.id);
                     }
                 }
 
@@ -2393,61 +2398,49 @@ const App = (() => {
                 return false;
             }
 
-            console.log('Repairing tournament:', tournament.name);
-            console.log('Matches:', tournament.matches);
 
             let repaired = 0;
             let synced = 0;
 
-            // STEP 1: Sync match statuses from completed games
-            // This fixes matches where the game was completed but the match wasn't updated
-            console.log('Checking matches for game sync...');
-            for (const match of tournament.matches) {
-                console.log(`Match ${match.match_number} (round ${match.round}): status=${match.status}, game_id=${match.game_id}`);
-                if (match.game_id && match.status !== 'completed') {
-                    // Fetch the game to check if it's completed
-                    const game = await Storage.getGame(match.game_id);
-                    console.log(`  Game ${match.game_id}: is_active=${game?.is_active}, players=`, game?.players?.map(p => ({name: p.name, winner: p.winner, finish_rank: p.finish_rank})));
-                    if (game && !game.is_active) {
-                        // Game is completed, find the winner (note: is_winner is mapped to 'winner' in transformed game)
-                        const winner = game.players.find(p => p.winner || p.finish_rank === 1);
-                        if (winner) {
-                            console.log(`  Syncing completed game for match ${match.match_number}: winner is ${winner.name}`);
-
-                            // Update match with winner info
-                            await Storage.updateTournamentMatch(match.id, {
-                                status: 'completed',
-                                winner_name: winner.name
-                            });
-
-                            match.status = 'completed';
-                            match.winner_name = winner.name;
-                            match.winner_id = winner.id;
-                            synced++;
-                        }
+            // STEP 1: Sync match statuses from completed games (parallel fetch)
+            const unsyncedMatches = tournament.matches.filter(m => m.game_id && m.status !== 'completed');
+            const gameResults = await Promise.all(
+                unsyncedMatches.map(m => Storage.getGame(m.game_id).catch(() => null))
+            );
+            const syncUpdates = [];
+            unsyncedMatches.forEach((match, i) => {
+                const game = gameResults[i];
+                if (game && !game.is_active) {
+                    const winner = game.players.find(p => p.winner || p.finish_rank === 1);
+                    if (winner) {
+                        match.status = 'completed';
+                        match.winner_name = winner.name;
+                        match.winner_id = winner.id;
+                        synced++;
+                        syncUpdates.push(Storage.updateTournamentMatch(match.id, {
+                            status: 'completed',
+                            winner_name: winner.name
+                        }));
                     }
                 }
-            }
+            });
+            await Promise.all(syncUpdates);
 
             // Re-fetch tournament if we synced any matches to get updated data
             if (synced > 0) {
-                console.log(`Synced ${synced} match(es) from completed games`);
                 tournament = await Storage.getTournament(tournamentId);
             }
 
             // STEP 2: Process all completed matches and advance winners
+            const advanceUpdates = [];
             for (const match of tournament.matches) {
                 if (match.status === 'completed' && match.winner_name && match.winner_next_match_id) {
                     const nextMatch = tournament.matches.find(m => m.id === match.winner_next_match_id);
                     if (nextMatch) {
-                        // Check if winner is already in next match
                         const alreadyAdvanced = nextMatch.player1_name === match.winner_name ||
                                                  nextMatch.player2_name === match.winner_name;
 
                         if (!alreadyAdvanced) {
-                            console.log(`Advancing ${match.winner_name} from match ${match.match_number} (round ${match.round}) to next match`);
-
-                            // Place winner in next match
                             if (!nextMatch.player1_name) {
                                 nextMatch.player1_id = match.winner_id;
                                 nextMatch.player1_name = match.winner_name;
@@ -2456,23 +2449,22 @@ const App = (() => {
                                 nextMatch.player2_name = match.winner_name;
                             }
 
-                            // Update match status
                             if (nextMatch.player1_name && nextMatch.player2_name) {
                                 nextMatch.status = 'ready';
                             }
 
-                            // Save to database - only pass names, not IDs
-                            await Storage.updateTournamentMatch(nextMatch.id, {
+                            advanceUpdates.push(Storage.updateTournamentMatch(nextMatch.id, {
                                 player1_name: nextMatch.player1_name || undefined,
                                 player2_name: nextMatch.player2_name || undefined,
                                 status: nextMatch.status
-                            });
+                            }));
 
                             repaired++;
                         }
                     }
                 }
             }
+            await Promise.all(advanceUpdates);
 
             UI.hideLoader();
 
@@ -2793,17 +2785,14 @@ const App = (() => {
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 APP.JS VERSION 2.0 - NORMALIZED SCHEMA');
 
     // Ensure Storage is initialized before anything else
     try {
-        console.log('Starting Storage initialization...');
         await Storage.init();
 
         // Wait for Storage.sb to be available (with timeout)
         let attempts = 0;
         while (!Storage.sb && attempts < 10) {
-            console.log('Waiting for Storage.sb to be ready...', attempts);
             await new Promise(resolve => setTimeout(resolve, 100));
             attempts++;
         }
@@ -2814,11 +2803,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Show info toast if running in local mode
         if (Storage.isLocal()) {
-            console.log('Running in local/offline mode');
             UI.showToast('Running in offline mode (localStorage)', 'info');
         }
 
-        console.log('Storage ready, initializing app...');
     } catch (error) {
         console.error('Failed to initialize Storage:', error);
         if (typeof UI !== 'undefined') {
@@ -2851,11 +2838,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 2500); // Show splash for 2.5 seconds
     }
 
-    // Periodic auto-save for current game
+    // Periodic auto-save for current game (only if data changed)
     setInterval(async () => {
-        if (window.currentGame) {
+        if (window.currentGame && gameNeedsSave) {
             try {
                 await Storage.updateGame(window.currentGame.id, window.currentGame);
+                gameNeedsSave = false;
             } catch (error) {
                 console.error('Auto-save failed:', error);
             }

@@ -217,18 +217,9 @@ const Game = (() => {
             if (activePlayersRemaining === 0) {
                 // All other players have finished
                 assignRankingsByFinishTurn(game);
-
-                // DEBUG: Log player finish ranks before final ranking
-                console.log('Before getRankings - player finish_ranks:');
-                game.players.forEach((p, idx) => {
-                    console.log(`  Player ${idx} (${p.name}): finish_round=${p.finish_round}, finish_rank=${p.finish_rank}`);
-                });
-
                 endGame(game);
                 const finalRankings = getRankings(game);
 
-                console.log('Final rankings returned:', finalRankings);
-                console.log('Final rankings length:', finalRankings ? finalRankings.length : 'undefined');
 
                 return {
                     success: true,
@@ -254,7 +245,6 @@ const Game = (() => {
                 const caughtUp = remainingPlayer && remainingPlayer.turns.length >= maxFinishedTurns;
 
                 if (caughtUp) {
-                    console.log(`Remaining player ${remainingPlayer.name} has ${remainingPlayer.turns.length} turns (finished max: ${maxFinishedTurns}) - ending game`);
                     assignRankingsByFinishTurn(game);
                     endGame(game);
                     const finalRankings = getRankings(game);
@@ -313,7 +303,6 @@ const Game = (() => {
             const caughtUp = remainingPlayer.turns.length >= maxFinishedTurns;
 
             if (caughtUp) {
-                console.log(`Remaining player ${remainingPlayer.name} has ${remainingPlayer.turns.length} turns (finished max: ${maxFinishedTurns}) - ending game`);
                 assignRankingsByFinishTurn(game);
                 endGame(game);
                 const finalRankings = getRankings(game);
@@ -381,21 +370,13 @@ const Game = (() => {
      * End the current game
      */
     function endGame(game) {
-        console.log('=== endGame DEBUG ===');
         game.is_active = false;
         game.completed_at = new Date().toISOString();
 
         // Assign finish_rank if not already assigned
         // This handles manual "End Game" where rankings weren't set during play
         const hasRankings = game.players.some(p => p.finish_rank !== undefined);
-        console.log('hasRankings:', hasRankings);
-        console.log('Players before ranking:');
-        game.players.forEach((p, i) => {
-            console.log(`  [${i}] ${p.name}: score=${p.currentScore}, winner=${p.winner}, finish_rank=${p.finish_rank}, finish_round=${p.finish_round}`);
-        });
-
         if (!hasRankings) {
-            console.log('No rankings found, assigning manually...');
             // Sort players: first by whether they finished (score=0), then by score, then by darts
             const sortedPlayers = [...game.players].sort((a, b) => {
                 // Players who reached 0 come first
@@ -417,21 +398,9 @@ const Game = (() => {
             sortedPlayers.forEach((player, index) => {
                 player.finish_rank = index + 1;
                 player.winner = (index === 0); // First place is winner
-            });
-            console.log('Sorted players (by score/finished):');
-            sortedPlayers.forEach((p, i) => {
-                console.log(`  [${i}] ${p.name}: score=${p.currentScore}, rank=${p.finish_rank}`);
-            });
-        }
-
-        console.log('Players after ranking:');
-        game.players.forEach((p, i) => {
-            console.log(`  [${i}] ${p.name}: finish_rank=${p.finish_rank}`);
-        });
-
+            });        }
         // Ensure winner is marked (player with finish_rank = 1)
         const winner = game.players.find(p => p.finish_rank === 1);
-        console.log('Winner by finish_rank=1:', winner ? winner.name : 'NONE FOUND');
         if (winner) {
             winner.winner = true;
             // Clear winner flag from others
@@ -440,20 +409,12 @@ const Game = (() => {
             });
         } else {
             // Fallback: if no finish_rank, use lowest score
-            console.log('Using fallback: lowest score');
             const sortedPlayers = [...game.players].sort((a, b) => a.currentScore - b.currentScore);
             if (sortedPlayers[0]) {
                 sortedPlayers[0].winner = true;
                 sortedPlayers[0].finish_rank = 1;
-                console.log('Fallback winner:', sortedPlayers[0].name);
             }
         }
-
-        console.log('Final winner state:');
-        game.players.forEach((p, i) => {
-            console.log(`  [${i}] ${p.name}: winner=${p.winner}, finish_rank=${p.finish_rank}`);
-        });
-
         return game;
     }
 
@@ -542,12 +503,6 @@ const Game = (() => {
      * Last player (who didn't finish) gets last rank
      */
     function assignRankingsByFinishTurn(game) {
-        console.log('=== assignRankingsByFinishTurn DEBUG ===');
-        console.log('All players:');
-        game.players.forEach((p, i) => {
-            console.log(`  [${i}] ${p.name}: score=${p.currentScore}, winner=${p.winner}, turns=${p.turns.length}, darts=${p.stats?.totalDarts}, avgPerDart=${p.stats?.avgPerDart}`);
-        });
-
         // Get all finished players (score = 0) with their turn counts and stats
         const finishedPlayers = game.players
             .filter(p => p.currentScore === 0)
@@ -558,7 +513,6 @@ const Game = (() => {
                 avgPerDart: p.stats?.avgPerDart || 0
             }));
 
-        console.log('Finished players:', finishedPlayers.map(fp => `${fp.player.name}:turns${fp.totalTurns}:avg${fp.avgPerDart.toFixed(2)}`).join(', '));
 
         // Sort by turns taken (ascending - fewer turns = better rank)
         // Tie-breaker: average per dart (descending - higher avg = better)
@@ -569,12 +523,10 @@ const Game = (() => {
             // Same turns: higher average = better rank (sort descending)
             return b.avgPerDart - a.avgPerDart;
         });
-        console.log('After sort:', finishedPlayers.map(fp => `${fp.player.name}:turns${fp.totalTurns}:avg${fp.avgPerDart.toFixed(2)}`).join(', '));
 
         // Assign sequential ranks - each player gets unique rank based on round + average
         finishedPlayers.forEach(({ player }, index) => {
             player.finish_rank = index + 1;
-            console.log(`  Assigned ${player.name} rank ${index + 1} (round ${player.finish_round}, avg ${player.stats?.avgPerDart?.toFixed(2)})`);
         });
 
         // Assign rank to any unfinished players (they get ranks after finished players)
@@ -589,18 +541,10 @@ const Game = (() => {
                 return (b.stats?.avgPerDart || 0) - (a.stats?.avgPerDart || 0);
             });
 
-        console.log('Unfinished players:', unfinishedPlayers.map(p => p.name).join(', ') || 'NONE');
         const startRank = finishedPlayers.length + 1;
         unfinishedPlayers.forEach((p, index) => {
             p.finish_rank = startRank + index;
-            console.log(`  Assigned ${p.name} rank ${startRank + index} (unfinished)`);
-        });
-
-        console.log('Final rankings:');
-        game.players.forEach((p, i) => {
-            console.log(`  [${i}] ${p.name}: finish_rank=${p.finish_rank}, avgPerDart=${p.stats?.avgPerDart?.toFixed(2)}`);
-        });
-    }
+        });    }
 
     function getNextFinishRank(game) {
         const finishedCount = game.players.filter(p => p.finish_rank !== undefined).length;

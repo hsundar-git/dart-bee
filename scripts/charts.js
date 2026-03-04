@@ -95,8 +95,8 @@ const Charts = (() => {
                         family: 'Barlow, sans-serif',
                         size: 12
                     },
-                    padding: 10,
-                    cornerRadius: 8
+                    padding: 12,
+                    cornerRadius: 12
                 }
             }
         };
@@ -310,7 +310,7 @@ const Charts = (() => {
                     label: 'Turns',
                     data: data,
                     backgroundColor: c.primary,
-                    borderRadius: 6,
+                    borderRadius: 10,
                     borderSkipped: false
                 }]
             },
@@ -360,13 +360,13 @@ const Charts = (() => {
                         label: 'Wins',
                         data: wins,
                         backgroundColor: c.accentGreen,
-                        borderRadius: 4
+                        borderRadius: 8
                     },
                     {
                         label: 'Losses',
                         data: losses,
                         backgroundColor: c.accentRed,
-                        borderRadius: 4
+                        borderRadius: 8
                     }
                 ]
             },
@@ -435,7 +435,7 @@ const Charts = (() => {
                 datasets: [{
                     data: values,
                     backgroundColor: backgroundColors,
-                    borderRadius: 6,
+                    borderRadius: 10,
                     borderSkipped: false
                 }]
             },

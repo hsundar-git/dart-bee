@@ -60,25 +60,20 @@ const Storage = (() => {
     async function init() {
         try {
             if (initialized) {
-                console.log('Storage already initialized');
                 return true;
             }
 
             backend = detectStorageMode();
-            console.log('Storage mode detected:', backend);
 
             if (isLocal()) {
                 const ok = LocalStorageBackend.init();
                 initialized = true;
-                console.log('✓ Storage initialized (local/offline mode)');
                 return ok;
             }
 
             // Supabase mode
-            console.log('Initializing Storage (Supabase)...');
             try {
                 supabase = ensureInitialized();
-                console.log('Supabase client obtained:', !!supabase);
 
                 // Test connection
                 const { error } = await supabase
@@ -104,8 +99,6 @@ const Storage = (() => {
             }
 
             initialized = true;
-            console.log('✓ Storage initialized successfully (normalized schema)');
-            console.log('✓ Storage.sb available:', !!supabase);
             return true;
         } catch (error) {
             console.error('Storage initialization error:', error);
@@ -435,7 +428,6 @@ const Storage = (() => {
                 }
             }
 
-            console.log(`✓ Game saved: ${game.players.length} players, ${turnsData.length} turns`);
             return gameData ? gameData[0] : game;
         } catch (error) {
             console.error('saveGame error:', error);
@@ -468,7 +460,6 @@ const Storage = (() => {
             };
 
             if (updates.completed_at && updates.players) {
-                console.log('=== updateGame Winner Detection DEBUG ===');
                 // Priority 1: finish_rank === 1
                 let winner = updates.players.find(p => p.finish_rank === 1);
                 // Priority 2: winner property is true
@@ -482,7 +473,6 @@ const Storage = (() => {
                 }
 
                 if (winner) {
-                    console.log(`  Detected winner: ${winner.name}`);
                     const { data: playerData } = await sb
                         .from('players')
                         .select('id')
@@ -491,7 +481,6 @@ const Storage = (() => {
 
                     if (playerData) {
                         gameUpdates.winner_id = playerData.id;
-                        console.log(`  Set winner_id to: ${playerData.id}`);
                     }
                 }
             }
@@ -746,7 +735,6 @@ const Storage = (() => {
                 throw error;
             }
 
-            console.log('✓ Game deleted (cascaded to game_players and turns)');
             return true;
         } catch (error) {
             console.error('deleteGame error:', error);

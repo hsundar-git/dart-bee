@@ -403,13 +403,13 @@ const UI = (() => {
                             </div>
                             <div class="game-card-footer">
                                 <span>Turn ${totalTurns} • Now: ${currentPlayer?.name || 'N/A'}</span>
-                                <span class="game-type-badge">${game.players.length} players</span>
-                            </div>
-                            <div style="display: flex; gap: 8px; margin-top: 8px;">
-                                <button class="btn ${isOwner ? 'btn-primary' : 'btn-success'} btn-small" onclick="Router.navigate('game', {gameId: '${game.id}'})" style="flex: 1;">
-                                    ${isOwner ? '▶️ Resume Game' : '📺 Watch Live'}
-                                </button>
-                                <button class="btn btn-danger btn-small delete-game-btn" data-game-id="${game.id}" onclick="event.stopPropagation(); App.confirmDeleteGame(this.dataset.gameId)"><svg class="icon-bin" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M5 6v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
+                                <div style="display: flex; gap: 8px; align-items: center;">
+                                    <span class="game-type-badge">${game.players.length} players</span>
+                                    <button class="btn ${isOwner ? 'btn-primary' : 'btn-success'} btn-small" onclick="Router.navigate('game', {gameId: '${game.id}'})">
+                                        ${isOwner ? '▶️' : '🖥️'}
+                                    </button>
+                                    <button class="btn btn-danger btn-small delete-game-btn" data-game-id="${game.id}" onclick="event.stopPropagation(); App.confirmDeleteGame(this.dataset.gameId)"><svg class="icon-bin" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M5 6v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
+                                </div>
                             </div>
                         </div>
                     `;
@@ -466,7 +466,6 @@ const UI = (() => {
             }
 
             container.innerHTML = html;
-            console.log('Recent games rendered successfully');
         } catch (error) {
             console.error('Error rendering recent games:', error);
             const container = document.getElementById('recent-games-list');
@@ -801,8 +800,12 @@ const UI = (() => {
      */
     function renderScoreboard(game) {
         const container = document.getElementById('scoreboard');
+        container.dataset.playerCount = game.players.length;
 
-        // Build sparkline and trend data per player
+        // Compute min score for gap indicator
+        const minScore = Math.min(...game.players.map(p => p.currentScore));
+
+        // Build extras per player
         const playerExtras = game.players.map((player) => {
             const turns = player.turns || [];
             const turnScores = turns.map(t => (t.busted ? 0 : t.darts.reduce((a, b) => a + b, 0)));
@@ -831,13 +834,22 @@ const UI = (() => {
                 const maxVal = Math.max(...last5, 1);
                 sparkHtml = '<span class="sparkline-container" data-values="' + last5.join(',') + '">' +
                     last5.map(v => {
-                        const h = Math.max(2, Math.round((v / maxVal) * 16));
+                        const h = Math.max(2, Math.round((v / maxVal) * 20));
                         return '<span class="sparkline-bar" style="height:' + h + 'px"></span>';
                     }).join('') +
                     '</span>';
             }
 
-            return { trendHtml, sparkHtml };
+            // Best turn score
+            const bestTurn = turnScores.length > 0 ? Math.max(...turnScores) : 0;
+
+            // Total darts thrown
+            const totalDarts = turns.reduce((sum, t) => sum + (t.darts ? t.darts.length : 0), 0);
+
+            // Count 180s
+            const count180 = turnScores.filter(s => s === 180).length;
+
+            return { trendHtml, sparkHtml, bestTurn, totalDarts, count180 };
         });
 
         container.innerHTML = game.players.map((player, index) => {
@@ -845,14 +857,63 @@ const UI = (() => {
             const stats = player.stats;
             const extras = playerExtras[index];
             const avgDisplay = player.turns.length > 0 ? (stats.totalScore / player.turns.length).toFixed(1) : '—';
+
+            // Checkout zone
+            const inCheckoutZone = game.win_condition === 'exact' && player.currentScore >= 2 && player.currentScore <= 170;
+
+            // Score gap
+            const gap = player.currentScore - minScore;
+            const gapHtml = (game.players.length > 1 && gap > 0)
+                ? `<div class="player-score-gap">+${gap}</div>`
+                : '';
+
+            // 180 badge
+            const badge180 = extras.count180 > 0
+                ? `<span class="badge-180">180 &times;${extras.count180}</span>`
+                : '';
+
+            // Checkout suggestions on current player card
+            let checkoutHtml = '';
+            if (isCurrent && inCheckoutZone) {
+                const routes = Game.getCheckoutSuggestions(player.currentScore);
+                if (routes) {
+                    checkoutHtml = `
+                        <div class="checkout-suggestions">
+                            <div class="checkout-label">Checkout</div>
+                            <div class="checkout-routes">
+                                ${routes.map(r => `<span class="checkout-pill">${r}</span>`).join('')}
+                            </div>
+                        </div>`;
+                }
+            }
+
+            // Current darts display (per-dart mode, current player only)
+            let dartsDisplayHtml = '';
+            if (isCurrent && game.scoring_mode === 'per-dart') {
+                dartsDisplayHtml = `
+                    <div class="current-darts-display">
+                        <span class="current-dart-pip" data-dart="0"></span>
+                        <span class="current-dart-pip" data-dart="1"></span>
+                        <span class="current-dart-pip" data-dart="2"></span>
+                    </div>`;
+            }
+
+            // Card classes
+            const classes = ['player-score-card'];
+            if (isCurrent) classes.push('current');
+            if (inCheckoutZone) classes.push('checkout-zone');
+
             return `
-                <div class="player-score-card ${isCurrent ? 'current' : ''}" data-player-index="${index}">
-                    <div class="player-score-name">${player.name}</div>
+                <div class="${classes.join(' ')}" data-player-index="${index}">
+                    <div class="player-score-name">${player.name} ${badge180}</div>
                     <div class="player-score-value">${player.currentScore}</div>
+                    ${gapHtml}
+                    ${dartsDisplayHtml}
+                    ${checkoutHtml}
                     <div class="player-score-stats">
-                        <div>Turns: ${player.turns.length}</div>
                         <div>Avg: ${avgDisplay} ${extras.trendHtml}</div>
-                        <div>${extras.sparkHtml}</div>
+                        <div>Best: ${extras.bestTurn}</div>
+                        <div>Darts: ${extras.totalDarts} ${extras.sparkHtml}</div>
                     </div>
                 </div>
             `;
@@ -870,6 +931,14 @@ const UI = (() => {
             }
             previousPlayerScores.set(key, player.currentScore);
         });
+
+        // Auto-scroll to current player's card
+        const currentCard = container.querySelector('.player-score-card.current');
+        if (currentCard) {
+            setTimeout(() => {
+                currentCard.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }, 100);
+        }
     }
 
     /**
@@ -880,7 +949,15 @@ const UI = (() => {
         const player = Game.getCurrentPlayer(game);
         const mode = game.scoring_mode;
 
+        // Restore dart-actions to original parent before clearing, so they don't get destroyed
+        const movedActions = container.querySelector('.dart-actions');
+        if (movedActions) {
+            movedActions.classList.remove('dart-actions-inline');
+            container.parentNode.insertBefore(movedActions, container.nextSibling);
+        }
+
         container.innerHTML = '';
+        container.classList.toggle('dart-inputs-single', mode !== 'per-dart');
 
         if (mode === 'per-dart') {
             for (let i = 0; i < 3; i++) {
@@ -912,6 +989,19 @@ const UI = (() => {
             });
         });
 
+        // Live-update current darts display on scoreboard (per-dart mode)
+        if (mode === 'per-dart') {
+            container.querySelectorAll('.dart-input').forEach((input, i) => {
+                input.addEventListener('input', () => {
+                    const pips = document.querySelectorAll('.current-dart-pip');
+                    if (pips[i]) {
+                        pips[i].textContent = input.value || '';
+                        pips[i].classList.toggle('filled', !!input.value);
+                    }
+                });
+            });
+        }
+
         // Add quick buttons
         const quickSection = document.createElement('div');
         quickSection.className = 'dart-number-pad';
@@ -919,6 +1009,7 @@ const UI = (() => {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'dart-quick-btn';
+            btn.dataset.score = dart;
             btn.textContent = dart;
             btn.onclick = (e) => {
                 e.preventDefault();
@@ -926,12 +1017,28 @@ const UI = (() => {
                 const firstEmpty = Array.from(inputs).find(input => !input.value);
                 if (firstEmpty) {
                     firstEmpty.value = dart;
+                    firstEmpty.dispatchEvent(new Event('input'));
                     firstEmpty.focus();
                 }
             };
             quickSection.appendChild(btn);
         });
         container.appendChild(quickSection);
+
+        // In per-turn mode, pull action buttons into the grid under the input
+        if (mode !== 'per-dart') {
+            const actions = document.querySelector('.dart-actions');
+            if (actions) {
+                actions.classList.add('dart-actions-inline');
+                container.insertBefore(actions, quickSection);
+            }
+        } else {
+            const actions = document.querySelector('.dart-actions-inline');
+            if (actions) {
+                actions.classList.remove('dart-actions-inline');
+                container.parentNode.appendChild(actions);
+            }
+        }
 
         // Checkout suggestions
         if (game.win_condition === 'exact' && player.currentScore <= 170 && player.currentScore >= 2) {
@@ -980,7 +1087,6 @@ const UI = (() => {
         const container = document.getElementById('turn-history');
         if (!container) return;
 
-        const startScore = game.game_type;
         const maxRounds = Math.max(...game.players.map(p => p.turns.length), 0);
 
         if (maxRounds === 0) {
@@ -1015,9 +1121,30 @@ const UI = (() => {
                     const darts = Array.isArray(turn.darts) ? turn.darts : [turn.darts || 0];
                     const total = darts.reduce((a, b) => a + b, 0);
                     const isBusted = turn.busted;
-                    const isHighScore = total >= 100;
-                    const scoreClass = isBusted ? 'scoreboard-busted' : isHighScore ? 'scoreboard-high' : '';
-                    html += `<td class="scoreboard-score ${scoreClass}" title="${darts.length > 1 ? darts.join('+') : ''}">${total}${isBusted ? '*' : ''}</td>`;
+
+                    // Score tier classes
+                    let scoreClass = '';
+                    let badge = '';
+                    if (isBusted) {
+                        scoreClass = 'scoreboard-busted';
+                        badge = '<span class="score-badge score-badge-bust">BUST</span>';
+                    } else if (total === 180) {
+                        scoreClass = 'scoreboard-180';
+                        badge = '<span class="score-badge score-badge-180">180!</span>';
+                    } else if (total >= 140) {
+                        scoreClass = 'scoreboard-ton-plus';
+                        badge = '<span class="score-badge score-badge-ton-plus">T+</span>';
+                    } else if (total >= 100) {
+                        scoreClass = 'scoreboard-high';
+                        badge = '<span class="score-badge score-badge-ton">TON</span>';
+                    }
+
+                    // Dart breakdown for per-dart mode
+                    const dartBreakdown = darts.length > 1
+                        ? `<span class="dart-breakdown">${darts.join(' · ')}</span>`
+                        : '';
+
+                    html += `<td class="scoreboard-score ${scoreClass}">${total} ${badge}${dartBreakdown}</td>`;
                     html += `<td class="scoreboard-remaining">${turn.remaining}</td>`;
                 } else {
                     html += '<td class="scoreboard-score">-</td><td class="scoreboard-remaining">-</td>';
@@ -1058,7 +1185,6 @@ const UI = (() => {
      */
     async function renderGameHistory(filter = '', sortOrder = 'newest', page = 1, includePractice = false, showIncomplete = false) {
         const container = document.getElementById('games-history-list');
-        console.log('Filtering history:', { filter, includePractice, showIncomplete });
 
         // OPTIMIZED: Database-level pagination and filtering
         const { games: paginatedGames, pagination } = await Storage.getGamesPaginated(
@@ -1418,9 +1544,30 @@ const UI = (() => {
                         const darts = Array.isArray(turn.darts) ? turn.darts : [turn.darts || 0];
                         const total = darts.reduce((a, b) => a + b, 0);
                         const isBusted = turn.busted;
-                        const isHighScore = total >= 100;
-                        const scoreClass = isBusted ? 'scoreboard-busted' : isHighScore ? 'scoreboard-high' : '';
-                        html += `<td class="scoreboard-score ${scoreClass}" title="${darts.length > 1 ? darts.join('+') : ''}">${total}${isBusted ? '*' : ''}</td>`;
+
+                        // Score tier classes
+                        let scoreClass = '';
+                        let badge = '';
+                        if (isBusted) {
+                            scoreClass = 'scoreboard-busted';
+                            badge = '<span class="score-badge score-badge-bust">BUST</span>';
+                        } else if (total === 180) {
+                            scoreClass = 'scoreboard-180';
+                            badge = '<span class="score-badge score-badge-180">180!</span>';
+                        } else if (total >= 140) {
+                            scoreClass = 'scoreboard-ton-plus';
+                            badge = '<span class="score-badge score-badge-ton-plus">T+</span>';
+                        } else if (total >= 100) {
+                            scoreClass = 'scoreboard-high';
+                            badge = '<span class="score-badge score-badge-ton">TON</span>';
+                        }
+
+                        // Dart breakdown for per-dart mode
+                        const dartBreakdown = darts.length > 1
+                            ? `<span class="dart-breakdown">${darts.join(' · ')}</span>`
+                            : '';
+
+                        html += `<td class="scoreboard-score ${scoreClass}">${total} ${badge}${dartBreakdown}</td>`;
                         html += `<td class="scoreboard-remaining">${turn.remaining}</td>`;
                     } else {
                         html += '<td class="scoreboard-score">-</td><td class="scoreboard-remaining">-</td>';
@@ -1808,6 +1955,13 @@ const UI = (() => {
         setTimeout(() => card.classList.remove('score-flash'), 600);
     }
 
+    function celebrate180(playerIndex) {
+        const card = document.querySelector(`.player-score-card[data-player-index="${playerIndex}"]`);
+        if (!card) return;
+        card.classList.add('score-180');
+        setTimeout(() => card.classList.remove('score-180'), 1200);
+    }
+
     function bustShakeAnimation(playerIndex) {
         const card = document.querySelector(`.player-score-card[data-player-index="${playerIndex}"]`);
         const dartEntry = document.querySelector('.dart-entry-section');
@@ -1918,7 +2072,7 @@ const UI = (() => {
 
                 if (player.winner) {
                     const medals = ['🥇', '🥈', '🥉'];
-                    statusIcon = medals[player.finish_rank - 1] || '🏅';
+                    statusIcon = medals[player.finish_rank - 1] || '🎖️';
                     statusText = `Finished - ${player.finish_rank}${player.finish_rank % 10 === 1 && player.finish_rank % 100 !== 11 ? 'st' : player.finish_rank % 10 === 2 && player.finish_rank % 100 !== 12 ? 'nd' : player.finish_rank % 10 === 3 && player.finish_rank % 100 !== 13 ? 'rd' : 'th'}`;
                 } else {
                     statusIcon = '▶️';
@@ -2029,10 +2183,10 @@ const UI = (() => {
                     const suffix = i === 3 ? 'th' : i === 4 ? 'th' : 'th';
                     html += `
                         <div class="ranking-item finished" data-player="${player.name}">
-                            <div class="ranking-medal">🏅</div>
+                            <div class="ranking-medal">${player.rank}${suffix}</div>
                             <div class="ranking-info">
                                 <div class="ranking-name">${player.name}</div>
-                                <div class="ranking-detail">✓ ${player.rank}${suffix}</div>
+                                <div class="ranking-detail">Finished</div>
                             </div>
                             <div class="ranking-score">
                                 <div>0</div>
@@ -2081,14 +2235,14 @@ const UI = (() => {
                     const prevPosition = previousPositions[player.name];
                     if (prevPosition !== undefined && prevPosition !== position) {
                         if (prevPosition > position) {
-                            positionChangeIndicator = ' 📈'; // Moved up
+                            positionChangeIndicator = ' ▲'; // Moved up
                             animationClass += ' position-up';
                         } else if (prevPosition < position) {
-                            positionChangeIndicator = ' 📉'; // Moved down
+                            positionChangeIndicator = ' ▼'; // Moved down
                             animationClass += ' position-down';
                         }
                     } else if (prevPosition !== undefined && prevPosition === position) {
-                        positionChangeIndicator = ' ➡️'; // Stayed same
+                        positionChangeIndicator = ' —'; // Stayed same
                     }
                 }
 
@@ -2187,7 +2341,7 @@ const UI = (() => {
                     </div>
                 </div>
                 <div class="global-stat-card">
-                    <div class="global-stat-icon">📊</div>
+                    <div class="global-stat-icon">🔢</div>
                     <div class="global-stat-content">
                         <div class="global-stat-value" id="counter-score">${globalStats.totalScore.toLocaleString()}</div>
                         <div class="global-stat-label">Total Points</div>
@@ -2211,7 +2365,7 @@ const UI = (() => {
 
             <!-- Records Section -->
             <div class="records-section">
-                <h3>🏅 All-Time Records</h3>
+                <h3>🎖️ All-Time Records</h3>
                 <div class="records-grid">
                     <div class="record-card">
                         <div class="record-icon">📈</div>
@@ -2242,7 +2396,7 @@ const UI = (() => {
 
             <!-- Fun Facts Section -->
             <div class="fun-facts-section">
-                <h3>📊 Fun Facts</h3>
+                <h3>💡 Fun Facts</h3>
                 <div class="fun-facts-grid">
                     <div class="fun-fact">
                         <span class="fun-fact-value">${globalStats.averagePerDart}</span>
@@ -2446,15 +2600,20 @@ const UI = (() => {
     // PLAYER MANAGEMENT RENDERING
     // ============================================================================
 
-    async function renderPlayersList() {
+    async function renderPlayersList(searchQuery = '', sortBy = 'name') {
         const container = document.getElementById('players-list-content');
         if (!container) return;
 
         try {
             const playersObj = await Storage.getPlayers();
-            const players = Object.values(playersObj).sort((a, b) =>
-                a.name.localeCompare(b.name)
-            );
+            let players = Object.values(playersObj);
+
+            // Filter by search query
+            if (searchQuery) {
+                const q = searchQuery.toLowerCase();
+                players = players.filter(p => p.name.toLowerCase().includes(q));
+            }
+
             const deletedPlayers = await Storage.getDeletedPlayers();
 
             if (players.length === 0 && deletedPlayers.length === 0) {
@@ -2482,6 +2641,35 @@ const UI = (() => {
                 playerFormMap[name] = playerFormMap[name].slice(0, 5);
             });
 
+            // Sort players based on sortBy option
+            switch (sortBy) {
+                case 'games':
+                    players.sort((a, b) => (b.total_games_played || 0) - (a.total_games_played || 0));
+                    break;
+                case 'wins':
+                    players.sort((a, b) => {
+                        const wrA = a.total_games_played > 0 ? a.total_games_won / a.total_games_played : 0;
+                        const wrB = b.total_games_played > 0 ? b.total_games_won / b.total_games_played : 0;
+                        return wrB - wrA;
+                    });
+                    break;
+                case 'avg':
+                    players.sort((a, b) => (parseFloat(b.avg_per_turn) || 0) - (parseFloat(a.avg_per_turn) || 0));
+                    break;
+                case 'recent':
+                    players.sort((a, b) => {
+                        const formA = playerFormMap[a.name];
+                        const formB = playerFormMap[b.name];
+                        const dateA = formA && formA.length > 0 ? new Date(formA[0].date) : new Date(0);
+                        const dateB = formB && formB.length > 0 ? new Date(formB[0].date) : new Date(0);
+                        return dateB - dateA;
+                    });
+                    break;
+                default: // 'name'
+                    players.sort((a, b) => a.name.localeCompare(b.name));
+                    break;
+            }
+
             let html = '';
 
             if (players.length > 0) {
@@ -2491,6 +2679,7 @@ const UI = (() => {
                         : 0;
                     const avgPerTurn = p.avg_per_turn ? parseFloat(p.avg_per_turn).toFixed(1) : '0';
                     const maxTurn = p.max_turn_score || 0;
+                    const total180s = p.total_180s || 0;
                     const initials = p.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
                     const form = playerFormMap[p.name] || [];
                     const formDots = form.length > 0
@@ -2507,7 +2696,7 @@ const UI = (() => {
                             <div class="player-card-info">
                                 <div class="player-card-name">${p.name}</div>
                                 <div class="player-card-meta">${joinedAgo ? `Joined ${joinedAgo}` : 'New player'}${formDots ? ` <span class="form-dots">${formDots}</span>` : ''}</div>
-                                <div class="player-card-meta">${p.total_games_played} games${lastPlayed ? ` · Last: ${lastPlayed}` : ''}</div>
+                                <div class="player-card-meta">${p.total_games_played} games${maxTurn > 0 ? ` · Best: ${maxTurn}` : ''}${lastPlayed ? ` · Last: ${lastPlayed}` : ''}</div>
                             </div>
                             <div class="player-card-right">
                                 <div class="player-card-stats">
@@ -2518,6 +2707,10 @@ const UI = (() => {
                                     <span class="player-stat-value">${winRate}%</span>
                                     <span class="player-stat-label">WINS</span>
                                 </div>
+                                <div class="player-card-stats">
+                                    <span class="player-stat-value">${total180s}</span>
+                                    <span class="player-stat-label">180s</span>
+                                </div>
                                 <button class="btn-icon player-menu-btn" data-player-id="${p.id}" data-player-name="${p.name}" data-games="${p.total_games_played || 0}">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                                 </button>
@@ -2525,7 +2718,7 @@ const UI = (() => {
                         </div>`;
                 }).join('')}</div>`;
             } else {
-                html += '<p class="placeholder">No active players. Add a player or start a game!</p>';
+                html += `<p class="placeholder">${searchQuery ? 'No players match your search' : 'No active players. Add a player or start a game!'}</p>`;
             }
 
             if (deletedPlayers.length > 0) {
@@ -2626,7 +2819,7 @@ const UI = (() => {
             const statusColors = {
                 'registration': '#ff9800',
                 'in_progress': '#4caf50',
-                'completed': '#9e9e9e'
+                'completed': '#FFD700'
             };
             const statusLabels = {
                 'registration': 'Registration Open',
@@ -2642,7 +2835,7 @@ const UI = (() => {
                 <div class="competition-card" onclick="Router.navigate('tournament', {tournamentId: '${t.id}'})">
                     <div class="competition-card-header">
                         <div class="competition-card-title">${t.name}</div>
-                        <span class="competition-status-badge" style="background: ${statusColors[t.status]};">
+                        <span class="competition-status-badge" style="background: ${statusColors[t.status]}; ${t.status === 'completed' ? 'color: #1a1025;' : ''}">
                             ${statusLabels[t.status]}
                         </span>
                     </div>
@@ -2681,7 +2874,7 @@ const UI = (() => {
             const statusColors = {
                 'registration': '#ff9800',
                 'in_progress': '#4caf50',
-                'completed': '#9e9e9e'
+                'completed': '#FFD700'
             };
             const statusLabels = {
                 'registration': 'Registration Open',
@@ -2698,7 +2891,7 @@ const UI = (() => {
                 <div class="competition-card" onclick="Router.navigate('league', {leagueId: '${l.id}'})">
                     <div class="competition-card-header">
                         <div class="competition-card-title">${l.name}</div>
-                        <span class="competition-status-badge" style="background: ${statusColors[l.status]};">
+                        <span class="competition-status-badge" style="background: ${statusColors[l.status]}; ${l.status === 'completed' ? 'color: #1a1025;' : ''}">
                             ${statusLabels[l.status]}
                         </span>
                     </div>
@@ -3277,14 +3470,14 @@ const UI = (() => {
                         <div class="player-avatar">${p1Initials}</div>
                         <span class="player-name">${match.player1_name || 'TBD'}</span>
                     </div>
-                    ${match.status === 'completed' && match.winner_id === match.player1_id ? '<span class="winner-mark">✓</span>' : ''}
+                    ${match.status === 'completed' && match.winner_id === match.player1_id ? '<span class="winner-mark">✔</span>' : ''}
                 </div>
                 <div class="match-slot ${match.winner_id === match.player2_id ? 'winner' : ''} ${!match.player2_id ? 'tbd' : ''}">
                     <div class="player-info">
                         <div class="player-avatar">${p2Initials}</div>
                         <span class="player-name">${match.player2_name || 'TBD'}</span>
                     </div>
-                    ${match.status === 'completed' && match.winner_id === match.player2_id ? '<span class="winner-mark">✓</span>' : ''}
+                    ${match.status === 'completed' && match.winner_id === match.player2_id ? '<span class="winner-mark">✔</span>' : ''}
                 </div>
                 ${match.status === 'ready' ? '<div class="match-status-badge">READY</div>' : ''}
                 ${match.status === 'in_progress' ? '<div class="match-status-badge in-progress">LIVE</div>' : ''}
@@ -3665,6 +3858,7 @@ const UI = (() => {
         renderPlayerProfile,
         updateActiveGameUI,
         flashScoreCard,
+        celebrate180,
         bustShakeAnimation,
         renderSpectatorGame,
         updateWinnersBoard,
