@@ -142,6 +142,8 @@ const Voice = (() => {
                 updateTranscript(`"${transcript}" → ${score}`, true);
                 speak(String(score));
                 onResultCallback(score);
+                // Clear transcript after 1s
+                setTimeout(() => clearTranscript(), 1000);
             } else if (score === null) {
                 updateTranscript(`"${transcript}" → ???`, true);
                 UI.showToast(`Didn't catch that: "${transcript}"`, 'warning');
