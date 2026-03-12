@@ -140,6 +140,7 @@ const Voice = (() => {
 
             if (score !== null && score >= 0 && onResultCallback) {
                 updateTranscript(`"${transcript}" → ${score}`, true);
+                speak(String(score));
                 onResultCallback(score);
             } else if (score === null) {
                 updateTranscript(`"${transcript}" → ???`, true);

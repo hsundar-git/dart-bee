@@ -589,11 +589,11 @@ const App = (() => {
                         if (nextEmpty) {
                             nextEmpty.focus();
                         } else {
-                            // All inputs filled — auto-submit after 5 seconds
+                            // All inputs filled — auto-submit after 3 seconds
                             clearTimeout(window._voiceAutoSubmitTimer);
                             window._voiceAutoSubmitTimer = setTimeout(() => {
                                 document.getElementById('submit-turn-btn')?.click();
-                            }, 5000);
+                            }, 3000);
                         }
                     }
                 });
