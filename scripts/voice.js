@@ -8,33 +8,18 @@ const Voice = (() => {
     let onResultCallback = null;
     let isSpeaking = false;
 
-    // Word-to-number mapping for spoken scores
-    const WORD_NUMBERS = {
-        'zero': 0, 'oh': 0, 'nil': 0, 'nothing': 0, 'no score': 0, 'miss': 0,
-        'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
-        'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
-        'eleven': 11, 'twelve': 12, 'thirteen': 13, 'fourteen': 14, 'fifteen': 15,
-        'sixteen': 16, 'seventeen': 17, 'eighteen': 18, 'nineteen': 19,
-        'twenty': 20, 'twenty one': 21, 'twenty two': 22, 'twenty three': 23,
-        'twenty four': 24, 'twenty five': 25, 'twenty six': 26, 'twenty seven': 27,
-        'twenty eight': 28, 'twenty nine': 29,
-        'thirty': 30, 'thirty one': 31, 'thirty two': 32, 'thirty three': 33,
-        'thirty four': 34, 'thirty five': 35, 'thirty six': 36, 'thirty seven': 37,
-        'thirty eight': 38, 'thirty nine': 39,
-        'forty': 40, 'forty one': 41, 'forty two': 42, 'forty three': 43,
-        'forty four': 44, 'forty five': 45, 'forty six': 46, 'forty seven': 47,
-        'forty eight': 48, 'forty nine': 49,
-        'fifty': 50, 'fifty one': 51, 'fifty two': 52, 'fifty three': 53,
-        'fifty four': 54, 'fifty five': 55, 'fifty six': 56, 'fifty seven': 57,
-        'fifty eight': 58, 'fifty nine': 59, 'sixty': 60,
-        'seventy': 70, 'eighty': 80, 'eighty one': 81, 'eighty five': 85,
-        'ninety': 90, 'ninety five': 95, 'ninety nine': 99,
-        'hundred': 100, 'one hundred': 100,
-        'one twenty': 120, 'one hundred twenty': 120, 'one hundred and twenty': 120,
-        'one forty': 140, 'one hundred forty': 140, 'one hundred and forty': 140,
-        'one sixty': 160, 'one hundred sixty': 160, 'one hundred and sixty': 160,
-        'one eighty': 180, 'one hundred eighty': 180, 'one hundred and eighty': 180,
-        'bust': -1, 'busted': -1
+    // Base word-to-number mappings
+    const ONES = {
+        'zero': 0, 'oh': 0, 'nil': 0, 'nothing': 0, 'no score': 0, 'miss': 0, 'nought': 0,
+        'one': 1, 'won': 1, 'two': 2, 'to': 2, 'too': 2, 'three': 3, 'tree': 3,
+        'four': 4, 'for': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'ate': 8,
+        'nine': 9, 'ten': 10, 'eleven': 11, 'twelve': 12, 'thirteen': 13,
+        'fourteen': 14, 'fifteen': 15, 'sixteen': 16, 'seventeen': 17,
+        'eighteen': 18, 'nineteen': 19
+    };
+    const TENS = {
+        'twenty': 20, 'thirty': 30, 'forty': 40, 'fourty': 40,
+        'fifty': 50, 'sixty': 60, 'seventy': 70, 'eighty': 80, 'ninety': 90
     };
 
     function isSupported() {
@@ -49,7 +34,7 @@ const Voice = (() => {
         recognition.continuous = false;
         recognition.interimResults = true;
         recognition.lang = 'en-IN';
-        recognition.maxAlternatives = 3;
+        recognition.maxAlternatives = 5;
 
         recognition.onresult = handleResult;
         recognition.onend = handleEnd;
@@ -59,22 +44,47 @@ const Voice = (() => {
     }
 
     function parseScore(transcript) {
-        const text = transcript.toLowerCase().trim();
+        const text = transcript.toLowerCase().trim()
+            .replace(/[-–]/g, ' ')    // "twenty-five" → "twenty five"
+            .replace(/\s+/g, ' ');    // collapse spaces
 
-        // Direct number match
+        // 1. Direct digit match (e.g. "60", "180")
         const numMatch = text.match(/\b(\d{1,3})\b/);
         if (numMatch) {
             const num = parseInt(numMatch[1], 10);
             if (num >= 0 && num <= 180) return num;
         }
 
-        // Word match - try longest phrases first
-        const sorted = Object.keys(WORD_NUMBERS).sort((a, b) => b.length - a.length);
-        for (const phrase of sorted) {
-            if (text.includes(phrase)) {
-                return WORD_NUMBERS[phrase];
+        // 2. Compute from words: handles "sixty five", "one hundred and twenty", etc.
+        const words = text.replace(/\band\b/g, '').trim().split(/\s+/);
+        let total = 0;
+        let found = false;
+
+        for (let i = 0; i < words.length; i++) {
+            const w = words[i];
+            const next = words[i + 1];
+            const twoWord = next ? w + ' ' + next : '';
+
+            // Check two-word phrases first (e.g. "no score")
+            if (twoWord && ONES[twoWord] !== undefined) {
+                total += ONES[twoWord];
+                found = true;
+                i++; // skip next word
+            } else if (w === 'hundred') {
+                // "hundred" alone means 100, or multiplies previous
+                if (total === 0) total = 100;
+                else total *= 100;
+                found = true;
+            } else if (TENS[w] !== undefined) {
+                total += TENS[w];
+                found = true;
+            } else if (ONES[w] !== undefined) {
+                total += ONES[w];
+                found = true;
             }
         }
+
+        if (found && total >= 0 && total <= 180) return total;
 
         return null;
     }
@@ -95,8 +105,10 @@ const Voice = (() => {
             }
 
             if (score !== null && score >= 0 && onResultCallback) {
+                updateTranscript(`"${transcript}" → ${score}`, true);
                 onResultCallback(score);
             } else if (score === null) {
+                updateTranscript(`"${transcript}" → ???`, true);
                 UI.showToast(`Didn't catch that: "${transcript}"`, 'warning');
             }
         }
