@@ -11,16 +11,16 @@ const Voice = (() => {
     // Base word-to-number mappings (includes homophones & accent variations)
     const ONES = {
         'zero': 0, 'oh': 0, 'nil': 0, 'nothing': 0, 'no score': 0, 'miss': 0, 'nought': 0,
-        'one': 1, 'won': 1, 'van': 1,
-        'two': 2, 'to': 2, 'too': 2, 'tu': 2,
-        'three': 3, 'tree': 3, 'free': 3,
-        'four': 4, 'for': 4, 'fore': 4,
-        'five': 5, 'fife': 5,
-        'six': 6, 'sicks': 6,
-        'seven': 7, 'saven': 7,
-        'eight': 8, 'ate': 8, 'ait': 8,
-        'nine': 9, 'nein': 9, 'nain': 9,
-        'ten': 10, 'tan': 10,
+        'one': 1, 'won': 1, 'van': 1, 'wan': 1, 'vun': 1, 'un': 1,
+        'two': 2, 'to': 2, 'too': 2, 'tu': 2, 'do': 2, 'du': 2,
+        'three': 3, 'tree': 3, 'free': 3, 'tri': 3, 'tee': 3,
+        'four': 4, 'for': 4, 'fore': 4, 'foor': 4, 'phor': 4,
+        'five': 5, 'fife': 5, 'hive': 5, 'fi': 5,
+        'six': 6, 'sicks': 6, 'sex': 6, 'sik': 6, 'sick': 6,
+        'seven': 7, 'saven': 7, 'saavan': 7, 'svan': 7,
+        'eight': 8, 'ate': 8, 'ait': 8, 'et': 8,
+        'nine': 9, 'nein': 9, 'nain': 9, 'nayn': 9,
+        'ten': 10, 'tan': 10, 'tin': 10,
         'eleven': 11, 'twelve': 12, 'thirteen': 13, 'turteen': 13,
         'fourteen': 14, 'fifteen': 15, 'sixteen': 16, 'seventeen': 17,
         'eighteen': 18, 'nineteen': 19
@@ -70,12 +70,13 @@ const Voice = (() => {
 
     function parseScore(transcript) {
         let text = transcript.toLowerCase().trim()
+            .replace(/[.,!?;:'"]/g, '')  // strip punctuation
             .replace(/[-–—]/g, ' ')   // "twenty-five" → "twenty five"
             .replace(/\s+/g, ' ');    // collapse spaces
 
         // 1. Direct digit match — also handle "1 80" → 180, "1 20" → 120
         const joinedDigits = text.replace(/(\d)\s+(\d)/g, '$1$2');
-        const numMatch = joinedDigits.match(/\b(\d{1,3})\b/);
+        const numMatch = joinedDigits.match(/(\d{1,3})/);
         if (numMatch) {
             const num = parseInt(numMatch[1], 10);
             if (num >= 0 && num <= 180) return num;
@@ -88,7 +89,10 @@ const Voice = (() => {
         }
 
         // 3. Strip filler words: "I got sixty" → "sixty"
+        const textBeforeFillers = text;
         text = text.replace(FILLERS, '').replace(/\s+/g, ' ').trim();
+        // If filler stripping wiped everything, use original text
+        if (!text) text = textBeforeFillers;
 
         // 4. Compute from words: handles "sixty five", "one hundred and twenty", etc.
         const words = text.replace(/\band\b/g, '').trim().split(/\s+/);
