@@ -8,19 +8,44 @@ const Voice = (() => {
     let onResultCallback = null;
     let isSpeaking = false;
 
-    // Base word-to-number mappings
+    // Base word-to-number mappings (includes homophones & accent variations)
     const ONES = {
         'zero': 0, 'oh': 0, 'nil': 0, 'nothing': 0, 'no score': 0, 'miss': 0, 'nought': 0,
-        'one': 1, 'won': 1, 'two': 2, 'to': 2, 'too': 2, 'three': 3, 'tree': 3,
-        'four': 4, 'for': 4, 'five': 5, 'six': 6, 'seven': 7, 'eight': 8, 'ate': 8,
-        'nine': 9, 'ten': 10, 'eleven': 11, 'twelve': 12, 'thirteen': 13,
+        'one': 1, 'won': 1, 'van': 1,
+        'two': 2, 'to': 2, 'too': 2, 'tu': 2,
+        'three': 3, 'tree': 3, 'free': 3,
+        'four': 4, 'for': 4, 'fore': 4,
+        'five': 5, 'fife': 5,
+        'six': 6, 'sicks': 6,
+        'seven': 7, 'saven': 7,
+        'eight': 8, 'ate': 8, 'ait': 8,
+        'nine': 9, 'nein': 9, 'nain': 9,
+        'ten': 10, 'tan': 10,
+        'eleven': 11, 'twelve': 12, 'thirteen': 13, 'turteen': 13,
         'fourteen': 14, 'fifteen': 15, 'sixteen': 16, 'seventeen': 17,
         'eighteen': 18, 'nineteen': 19
     };
     const TENS = {
-        'twenty': 20, 'thirty': 30, 'forty': 40, 'fourty': 40,
-        'fifty': 50, 'sixty': 60, 'seventy': 70, 'eighty': 80, 'ninety': 90
+        'twenty': 20, 'thirty': 30, 'tirty': 30,
+        'forty': 40, 'fourty': 40, 'faulty': 40, 'fawty': 40,
+        'fifty': 50, 'fifti': 50,
+        'sixty': 60, 'sexty': 60, 'siksti': 60,
+        'seventy': 70, 'eighty': 80, 'ighty': 80,
+        'ninety': 90, 'nainty': 90
     };
+
+    // Dart-specific terms (longest first for matching)
+    const DART_TERMS = {
+        "bull's eye": 50, 'bulls eye': 50, 'bullseye': 50, 'full bull': 50, 'bull': 50,
+        'outer bull': 25, 'single bull': 25,
+        'ton eighty': 180, 'ton 80': 180,
+        'ton forty': 140, 'ton 40': 140,
+        'ton twenty': 120, 'ton 20': 120,
+        'ton': 100, 'maximum': 180, 'max': 180
+    };
+
+    // Filler words to strip before parsing
+    const FILLERS = /\b(i got|i scored|it's|its|that's|thats|score is|score|points|point|is|the|a|my|got|scored|it|that)\b/g;
 
     function isSupported() {
         return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
@@ -44,18 +69,28 @@ const Voice = (() => {
     }
 
     function parseScore(transcript) {
-        const text = transcript.toLowerCase().trim()
-            .replace(/[-–]/g, ' ')    // "twenty-five" → "twenty five"
+        let text = transcript.toLowerCase().trim()
+            .replace(/[-–—]/g, ' ')   // "twenty-five" → "twenty five"
             .replace(/\s+/g, ' ');    // collapse spaces
 
-        // 1. Direct digit match (e.g. "60", "180")
-        const numMatch = text.match(/\b(\d{1,3})\b/);
+        // 1. Direct digit match — also handle "1 80" → 180, "1 20" → 120
+        const joinedDigits = text.replace(/(\d)\s+(\d)/g, '$1$2');
+        const numMatch = joinedDigits.match(/\b(\d{1,3})\b/);
         if (numMatch) {
             const num = parseInt(numMatch[1], 10);
             if (num >= 0 && num <= 180) return num;
         }
 
-        // 2. Compute from words: handles "sixty five", "one hundred and twenty", etc.
+        // 2. Dart-specific terms (check longest phrases first)
+        const sortedDarts = Object.keys(DART_TERMS).sort((a, b) => b.length - a.length);
+        for (const term of sortedDarts) {
+            if (text.includes(term)) return DART_TERMS[term];
+        }
+
+        // 3. Strip filler words: "I got sixty" → "sixty"
+        text = text.replace(FILLERS, '').replace(/\s+/g, ' ').trim();
+
+        // 4. Compute from words: handles "sixty five", "one hundred and twenty", etc.
         const words = text.replace(/\band\b/g, '').trim().split(/\s+/);
         let total = 0;
         let found = false;
@@ -69,9 +104,8 @@ const Voice = (() => {
             if (twoWord && ONES[twoWord] !== undefined) {
                 total += ONES[twoWord];
                 found = true;
-                i++; // skip next word
-            } else if (w === 'hundred') {
-                // "hundred" alone means 100, or multiplies previous
+                i++;
+            } else if (w === 'hundred' || w === 'hundread') {
                 if (total === 0) total = 100;
                 else total *= 100;
                 found = true;
