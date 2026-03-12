@@ -145,6 +145,8 @@ const Voice = (() => {
             } else if (score === null) {
                 updateTranscript(`"${transcript}" → ???`, true);
                 UI.showToast(`Didn't catch that: "${transcript}"`, 'warning');
+                // Clear transcript after 1s so it's ready for next attempt
+                setTimeout(() => clearTranscript(), 1000);
             }
         }
     }
@@ -166,7 +168,11 @@ const Voice = (() => {
     }
 
     function handleError(event) {
-        if (event.error === 'no-speech') return; // Normal timeout
+        if (event.error === 'no-speech') {
+            // Timeout with no speech — clear transcript and let handleEnd restart
+            clearTranscript();
+            return;
+        }
         if (event.error === 'aborted') return;
 
         if (event.error === 'not-allowed') {
