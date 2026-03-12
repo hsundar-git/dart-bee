@@ -1002,6 +1002,60 @@ const UI = (() => {
             });
         }
 
+        // Voice input button (if supported)
+        if (Voice.isSupported()) {
+            const voiceSection = document.createElement('div');
+            voiceSection.className = 'voice-input-section';
+            voiceSection.innerHTML = `
+                <button type="button" class="btn btn-voice" id="voice-score-btn" aria-label="Start voice input">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                        <line x1="12" y1="19" x2="12" y2="23"/>
+                        <line x1="8" y1="23" x2="16" y2="23"/>
+                    </svg>
+                    <span class="voice-label">Voice</span>
+                </button>
+                <div id="voice-transcript" class="voice-transcript hidden"></div>
+            `;
+            container.appendChild(voiceSection);
+
+            document.getElementById('voice-score-btn').addEventListener('click', () => {
+                Voice.toggle(
+                    // Score callback
+                    (score) => {
+                        const inputs = container.querySelectorAll('.dart-input');
+                        const firstEmpty = Array.from(inputs).find(input => !input.value);
+                        if (firstEmpty) {
+                            firstEmpty.value = score;
+                            firstEmpty.dispatchEvent(new Event('input'));
+                            const nextEmpty = Array.from(inputs).find(input => !input.value);
+                            if (nextEmpty) {
+                                nextEmpty.focus();
+                            }
+                        }
+                    },
+                    // Command callback
+                    (command) => {
+                        switch (command) {
+                            case 'undo':
+                                document.getElementById('undo-dart-btn')?.click();
+                                break;
+                            case 'submit':
+                                document.getElementById('submit-turn-btn')?.click();
+                                break;
+                            case 'clear':
+                                container.querySelectorAll('.dart-input').forEach(input => {
+                                    input.value = '';
+                                    input.dispatchEvent(new Event('input'));
+                                });
+                                break;
+                        }
+                    }
+                );
+            });
+        }
+
         // Add quick buttons
         const quickSection = document.createElement('div');
         quickSection.className = 'dart-number-pad';
@@ -1458,6 +1512,7 @@ const UI = (() => {
                 <span class="detail-info">⏱ ${duration}</span>
                 ${game.is_practice ? '<span class="practice-badge">Practice</span>' : ''}
                 ${winner ? `<span class="detail-winner">🏆 ${winner.name}</span>` : ''}
+                <button class="btn btn-danger btn-small" id="delete-game-detail-btn" data-game-id="${game.id}"><svg class="icon-bin" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M5 6v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg></button>
             </div>
         `;
 
@@ -1579,6 +1634,30 @@ const UI = (() => {
         }
 
         content.innerHTML = html;
+
+        // Wire up delete button
+        const deleteBtn = document.getElementById('delete-game-detail-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', () => {
+                const modal = document.createElement('div');
+                modal.innerHTML = `
+                    <p>Are you sure you want to delete this game?</p>
+                    <p style="color: var(--color-text-light); font-size: 0.85rem;">This cannot be undone.</p>
+                    <div style="display: flex; gap: 8px; margin-top: 16px;">
+                        <button class="btn btn-danger" id="confirm-delete-game-btn">Delete</button>
+                        <button class="btn btn-secondary" id="cancel-delete-game-btn">Cancel</button>
+                    </div>
+                `;
+                showModal(modal, 'Delete Game');
+                document.getElementById('confirm-delete-game-btn').addEventListener('click', async () => {
+                    await Storage.deleteGame(gameId);
+                    hideModal();
+                    showToast('Game deleted', 'success');
+                    Router.navigate('history');
+                });
+                document.getElementById('cancel-delete-game-btn').addEventListener('click', () => hideModal());
+            });
+        }
     }
 
     /**
