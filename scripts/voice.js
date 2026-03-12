@@ -6,15 +6,7 @@ const Voice = (() => {
     let recognition = null;
     let isListening = false;
     let onResultCallback = null;
-    let onCommandCallback = null;
     let isSpeaking = false;
-
-    // Voice commands mapped to actions
-    const COMMANDS = {
-        'undo': ['undo', 'undo dart', 'undo that', 'take it back', 'go back', 'redo', 'redo dart'],
-        'submit': ['submit', 'submit turn', 'done', 'next', 'next player', 'send it', 'confirm'],
-        'clear': ['clear', 'clear all', 'reset', 'start over', 'wipe']
-    };
 
     // Word-to-number mapping for spoken scores
     const WORD_NUMBERS = {
@@ -56,7 +48,7 @@ const Voice = (() => {
         recognition = new SpeechRecognition();
         recognition.continuous = false;
         recognition.interimResults = true;
-        recognition.lang = 'en-US';
+        recognition.lang = 'en-IN';
         recognition.maxAlternatives = 3;
 
         recognition.onresult = handleResult;
@@ -64,16 +56,6 @@ const Voice = (() => {
         recognition.onerror = handleError;
 
         return true;
-    }
-
-    function parseCommand(transcript) {
-        const text = transcript.toLowerCase().trim();
-        for (const [action, phrases] of Object.entries(COMMANDS)) {
-            for (const phrase of phrases) {
-                if (text.includes(phrase)) return action;
-            }
-        }
-        return null;
     }
 
     function parseScore(transcript) {
@@ -106,20 +88,7 @@ const Voice = (() => {
         updateTranscript(transcript, isFinal);
 
         if (isFinal) {
-            // Check for commands first (across all alternatives)
-            let command = null;
             let score = null;
-            for (let i = 0; i < result.length; i++) {
-                command = parseCommand(result[i].transcript);
-                if (command) break;
-            }
-
-            if (command && onCommandCallback) {
-                onCommandCallback(command);
-                return;
-            }
-
-            // Then try score parsing
             for (let i = 0; i < result.length; i++) {
                 score = parseScore(result[i].transcript);
                 if (score !== null) break;
@@ -159,14 +128,13 @@ const Voice = (() => {
         }
     }
 
-    function start(scoreCallback, commandCallback) {
+    function start(scoreCallback) {
         if (!recognition && !init()) {
             UI.showToast('Voice input not supported in this browser', 'error');
             return;
         }
 
         onResultCallback = scoreCallback;
-        onCommandCallback = commandCallback;
         isListening = true;
         updateButton(true);
 
@@ -180,7 +148,6 @@ const Voice = (() => {
     function stop() {
         isListening = false;
         onResultCallback = null;
-        onCommandCallback = null;
         updateButton(false);
         clearTranscript();
 
@@ -189,11 +156,11 @@ const Voice = (() => {
         }
     }
 
-    function toggle(scoreCallback, commandCallback) {
+    function toggle(scoreCallback) {
         if (isListening) {
             stop();
         } else {
-            start(scoreCallback, commandCallback);
+            start(scoreCallback);
         }
     }
 

@@ -577,35 +577,26 @@ const App = (() => {
         }
         if (voiceBtn && Voice.isSupported()) {
             voiceBtn.addEventListener('click', () => {
-                Voice.toggle(
-                    (score) => {
-                        const container = document.getElementById('dart-inputs-container');
-                        const inputs = container?.querySelectorAll('.dart-input');
-                        if (!inputs) return;
-                        const firstEmpty = Array.from(inputs).find(input => !input.value);
-                        if (firstEmpty) {
-                            firstEmpty.value = score;
-                            firstEmpty.dispatchEvent(new Event('input'));
-                            const nextEmpty = Array.from(inputs).find(input => !input.value);
-                            if (nextEmpty) nextEmpty.focus();
-                        }
-                    },
-                    (command) => {
-                        switch (command) {
-                            case 'undo':
-                                document.getElementById('undo-dart-btn')?.click();
-                                break;
-                            case 'submit':
+                Voice.toggle((score) => {
+                    const container = document.getElementById('dart-inputs-container');
+                    const inputs = container?.querySelectorAll('.dart-input');
+                    if (!inputs) return;
+                    const firstEmpty = Array.from(inputs).find(input => !input.value);
+                    if (firstEmpty) {
+                        firstEmpty.value = score;
+                        firstEmpty.dispatchEvent(new Event('input'));
+                        const nextEmpty = Array.from(inputs).find(input => !input.value);
+                        if (nextEmpty) {
+                            nextEmpty.focus();
+                        } else {
+                            // All inputs filled — auto-submit after 5 seconds
+                            clearTimeout(window._voiceAutoSubmitTimer);
+                            window._voiceAutoSubmitTimer = setTimeout(() => {
                                 document.getElementById('submit-turn-btn')?.click();
-                                break;
-                            case 'clear':
-                                document.getElementById('dart-inputs-container')
-                                    ?.querySelectorAll('.dart-input')
-                                    .forEach(input => { input.value = ''; input.dispatchEvent(new Event('input')); });
-                                break;
+                            }, 5000);
                         }
                     }
-                );
+                });
             });
         }
 
