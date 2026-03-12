@@ -1002,60 +1002,6 @@ const UI = (() => {
             });
         }
 
-        // Voice input button (if supported)
-        if (Voice.isSupported()) {
-            const voiceSection = document.createElement('div');
-            voiceSection.className = 'voice-input-section';
-            voiceSection.innerHTML = `
-                <button type="button" class="btn btn-voice" id="voice-score-btn" aria-label="Start voice input">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                        <line x1="12" y1="19" x2="12" y2="23"/>
-                        <line x1="8" y1="23" x2="16" y2="23"/>
-                    </svg>
-                    <span class="voice-label">Voice</span>
-                </button>
-                <div id="voice-transcript" class="voice-transcript hidden"></div>
-            `;
-            container.appendChild(voiceSection);
-
-            document.getElementById('voice-score-btn').addEventListener('click', () => {
-                Voice.toggle(
-                    // Score callback
-                    (score) => {
-                        const inputs = container.querySelectorAll('.dart-input');
-                        const firstEmpty = Array.from(inputs).find(input => !input.value);
-                        if (firstEmpty) {
-                            firstEmpty.value = score;
-                            firstEmpty.dispatchEvent(new Event('input'));
-                            const nextEmpty = Array.from(inputs).find(input => !input.value);
-                            if (nextEmpty) {
-                                nextEmpty.focus();
-                            }
-                        }
-                    },
-                    // Command callback
-                    (command) => {
-                        switch (command) {
-                            case 'undo':
-                                document.getElementById('undo-dart-btn')?.click();
-                                break;
-                            case 'submit':
-                                document.getElementById('submit-turn-btn')?.click();
-                                break;
-                            case 'clear':
-                                container.querySelectorAll('.dart-input').forEach(input => {
-                                    input.value = '';
-                                    input.dispatchEvent(new Event('input'));
-                                });
-                                break;
-                        }
-                    }
-                );
-            });
-        }
-
         // Add quick buttons
         const quickSection = document.createElement('div');
         quickSection.className = 'dart-number-pad';

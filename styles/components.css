@@ -789,13 +789,13 @@
     grid-template-columns: 1.8fr 1fr;
     gap: var(--spacing-lg);
     margin-bottom: var(--spacing-xl);
-    grid-template-rows: 320px;
+    grid-template-rows: auto;
 }
 
 .dart-entry-section {
     background: var(--color-bg-lighter);
     border-radius: var(--radius-xl);
-    padding: var(--spacing-xl);
+    padding: var(--spacing-md);
     box-shadow: var(--shadow-md);
     display: flex;
     flex-direction: column;
@@ -806,7 +806,7 @@
 
 .dart-entry-section h2 {
     margin-top: 0;
-    margin-bottom: var(--spacing-xl);
+    margin-bottom: var(--spacing-sm);
     color: var(--color-primary-dark);
     font-size: 1.25rem;
     font-weight: 700;
@@ -817,17 +817,18 @@
 
 .dart-inputs {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--spacing-md);
-    margin-bottom: var(--spacing-xl);
+    grid-template-columns: repeat(3, auto);
+    gap: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
     flex-shrink: 0;
+    justify-content: center;
 }
 
 .dart-input-group {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
 }
 
 
@@ -840,15 +841,16 @@
 }
 
 .dart-input-group input {
-    padding: var(--spacing-sm);
-    font-size: 1.3rem;
+    padding: 6px;
+    font-size: 1.1rem;
     text-align: center;
     font-weight: 700;
     border-radius: var(--radius-lg);
     background: #0d1117;
     border: 2px solid #30363d;
     color: #e6edf3;
-    width: 140px;
+    width: 100%;
+    max-width: 120px;
     -moz-appearance: textfield;
 }
 
@@ -867,11 +869,13 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 10px;
-    margin-bottom: var(--spacing-xl);
+    gap: 6px;
+    margin-bottom: var(--spacing-sm);
     flex-shrink: 0;
-    max-width: 300px;
+    max-width: 340px;
     grid-column: 1 / -1;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 /* Per-turn mode: input + number pad side by side */
@@ -886,7 +890,7 @@
 
 .dart-inputs.dart-inputs-single .dart-number-pad {
     grid-column: 2;
-    grid-row: 1 / 3;
+    grid-row: 1 / 4;
     max-width: none;
     margin-bottom: 0;
     align-self: center;
@@ -897,11 +901,17 @@
     justify-content: center;
     margin-top: var(--spacing-md);
     margin-bottom: 0;
+    flex-wrap: wrap;
+}
+
+.dart-actions.dart-actions-inline .btn {
+    width: auto;
+    min-width: 100px;
 }
 
 .dart-quick-btn {
-    width: 52px;
-    height: 52px;
+    width: 42px;
+    height: 42px;
     background: #161b22;
     border: 2px solid #30363d;
     border-radius: 50%;
@@ -910,7 +920,7 @@
     font-weight: 700;
     cursor: pointer;
     transition: all 0.15s ease;
-    font-size: 0.95rem;
+    font-size: 0.8rem;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -965,16 +975,16 @@
 
 .dart-actions {
     display: flex;
-    gap: var(--spacing-md);
+    gap: var(--spacing-sm);
     flex-shrink: 0;
     justify-content: center;
 }
 
 .dart-actions .btn {
-    padding: var(--spacing-sm);
-    font-size: 0.85rem;
+    padding: 6px 12px;
+    font-size: 0.8rem;
     border-radius: var(--radius-lg);
-    width: 140px;
+    width: 120px;
     text-align: center;
     display: flex;
     align-items: center;
@@ -985,27 +995,22 @@
    VOICE INPUT
    ============================ */
 
-.voice-input-section {
-    grid-column: 1 / -1;
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-sm);
-    justify-content: center;
-    margin-bottom: var(--spacing-sm);
-}
-
-.btn-voice {
+.btn-voice,
+.dart-actions .btn-voice {
     display: inline-flex;
     align-items: center;
-    gap: var(--spacing-xs);
-    padding: var(--spacing-xs) var(--spacing-md);
+    justify-content: center;
+    padding: var(--spacing-sm);
     background: rgba(255, 255, 255, 0.06);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-full, 50px);
+    border-radius: var(--radius-lg);
     color: var(--color-text-secondary);
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     cursor: pointer;
     transition: all 0.2s ease;
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
 }
 
 .btn-voice:hover {
@@ -1029,10 +1034,8 @@
     font-size: 0.75rem;
     color: var(--color-text-secondary);
     font-style: italic;
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    text-align: center;
+    margin-top: var(--spacing-xs);
 }
 
 .voice-transcript-final {
@@ -7865,6 +7868,7 @@
     border-radius: 6px;
     background: rgba(255, 215, 0, 0.1);
     border: 1px solid rgba(255, 215, 0, 0.3);
+    display: none;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -7875,6 +7879,7 @@
 }
 
 .current-dart-pip.filled {
+    display: inline-flex;
     background: rgba(255, 215, 0, 0.2);
     border-color: #FFD700;
 }
