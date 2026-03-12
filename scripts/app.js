@@ -2675,13 +2675,13 @@ const App = (() => {
                         
                         switch (drill) {
                             case 'ton80':
-                                await startPracticeGame([playerName], 501, 'per-turn', true);
+                                await startPracticeGame([playerName], 301, 'per-turn', true);
                                 break;
                             case 'doubles':
                                 await startPracticeGame([playerName], 301, 'per-dart', false);
                                 break;
                             case 'highscore':
-                                await startPracticeGame([playerName], 501, 'per-turn', true);
+                                await startPracticeGame([playerName], 301, 'per-turn', true);
                                 break;
                         }
                     };
