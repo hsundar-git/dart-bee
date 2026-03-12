@@ -141,6 +141,11 @@ const App = (() => {
      */
     async function handleRoute(routeInfo) {
 
+        // Stop voice input when navigating away from game
+        if (routeInfo.route !== 'game' && Voice.isSupported()) {
+            Voice.stop();
+        }
+
         // Clean up subscriptions when navigating away
         if (isSpectatorMode && routeInfo.route !== 'game') {
             unsubscribeFromGameUpdates();
@@ -1312,6 +1317,7 @@ const App = (() => {
                 SoundFX.play('bust');
                 triggerHaptic([100, 50, 100]);
                 UI.showToast('BUST! Score reverted', 'warning');
+                Voice.speak(`Bust! ${Game.getCurrentPlayer(currentGame).name}, your turn.`);
                 UI.updateWinnersBoard(result.allRankings || Game.getRankings(currentGame), roundCompleted);
                 UI.updateActiveGameUI(currentGame, false);
                 return;
@@ -1327,12 +1333,16 @@ const App = (() => {
                 // If game ended (last player finished)
                 if (result.gameEnded) {
                     SoundFX.play('gameComplete');
+                    const winner = result.finalRankings?.[0]?.name || result.playerFinished;
+                    // Announce winner, then automatically stop voice
+                    Voice.speakAndStop(`Game over! ${winner} wins!`);
                     UI.updateWinnersBoard(result.finalRankings, true);
                     setTimeout(() => {
                         showGameCompletionModal(result.finalRankings);
                     }, 800);
                 } else {
                     SoundFX.play('playerFinish');
+                    Voice.speak(`${result.playerFinished} finishes! Next up, ${result.nextPlayer}.`);
                     // Continue with next player
                     setTimeout(() => {
                         UI.updateActiveGameUI(currentGame, false); // Don't animate on next player setup
@@ -1358,6 +1368,19 @@ const App = (() => {
                     triggerHaptic(40); // Subtle "click"
                 }
 
+                // Check if game ended via "caught up" logic (last player didn't finish but had fair turns)
+                if (result.gameEnded) {
+                    SoundFX.play('gameComplete');
+                    const finalRankings = result.finalRankings;
+                    const winner = finalRankings?.[0]?.name;
+                    Voice.speakAndStop(`Game over! ${winner} wins!`);
+                    UI.updateWinnersBoard(finalRankings, true);
+                    setTimeout(() => {
+                        showGameCompletionModal(finalRankings);
+                    }, 800);
+                    return;
+                }
+
                 // Update rankings: animate only if round completed
                 UI.updateWinnersBoard(result.allRankings || Game.getRankings(currentGame), roundCompleted);
                 UI.updateActiveGameUI(currentGame, false);
@@ -1369,6 +1392,15 @@ const App = (() => {
                 }
 
                 UI.showToast(`Next: ${result.nextPlayer}`, 'info');
+
+                // Voice announcement for next player
+                if (turnTotal === 180) {
+                    Voice.speak(`One hundred and eighty! ${result.nextPlayer}, you're up.`);
+                } else if (turnTotal >= 100) {
+                    Voice.speak(`${turnTotal} scored. ${result.nextPlayer}, your turn.`);
+                } else {
+                    Voice.speak(`${result.nextPlayer}, your turn.`);
+                }
             }
         } catch (error) {
             console.error('Error submitting turn:', error);
