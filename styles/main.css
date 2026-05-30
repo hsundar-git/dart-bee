@@ -1,64 +1,33 @@
 /* ============================
    DART BEE - DESIGN SYSTEM
-   Light theme adopted from the Nudgebee design system
-   (blue primary #2563eb + bee-yellow accent #facf39)
+   Based on Nudge Bee aesthetic
    ============================ */
 
-/* ----------------------------------------------------------------
-   Nudgebee design tokens (--nb-*) — the canonical source of truth.
-   The legacy --color-* / --font-* / --radius-* variables below are
-   kept as aliases so existing component styles flip automatically.
-   ---------------------------------------------------------------- */
+/* CSS Variables — Minimal Dark + Gold */
 :root {
-    /* ── Nudgebee core palette ── */
-    --nb-color-primary: #2563eb;        /* primary action / links */
-    --nb-color-primary-hover: #1d4ed8;
-    --nb-color-primary-soft: #dbeafe;   /* tinted backgrounds */
-    --nb-color-bee: #facf39;            /* bee-yellow brand accent */
-    --nb-color-bee-dark: #f59e0b;       /* amber, legible on white */
-    --nb-color-white: #ffffff;
-    --nb-color-bg: #f9fafb;             /* app background (gray-50) */
-    --nb-color-surface: #ffffff;        /* cards / panels */
-    --nb-color-surface-2: #f3f4f6;      /* hover / subtle fills */
-    --nb-color-border: #e5e7eb;         /* hairline borders */
-    --nb-color-border-strong: #d1d5db;
+    /* Colors — Dark palette with gold accent */
+    --color-primary-dark: #e6edf3;
+    --color-primary: #FFD700;
+    --color-primary-light: #ffe566;
+    --color-accent: #FFD700;
+    --color-accent-light: #ffe566;
+    --color-accent-green: #3fb950;
+    --color-accent-yellow: #FFD700;
+    --color-accent-blue: #58a6ff;
+    --color-accent-red: #f85149;
 
-    --nb-text-strong: #1f2937;          /* headings / emphasis */
-    --nb-text-primary: #374151;         /* body */
-    --nb-text-secondary: #6b7280;       /* muted */
-    --nb-text-tertiary: #9ca3af;        /* faint */
-
-    --nb-color-success: #16a34a;
-    --nb-color-warning: #f59e0b;
-    --nb-color-error: #dc2626;
-    --nb-color-info: #3b82f6;
-    --nb-color-gold: #f5b301;           /* winner / 1st place */
-    --nb-color-silver: #9ca3af;
-    --nb-color-bronze: #cd7f32;
-
-    /* ── Legacy aliases (mapped onto the light palette) ── */
-    --color-primary-dark: var(--nb-text-strong);
-    --color-primary: var(--nb-color-primary);
-    --color-primary-light: #60a5fa;
-    --color-accent: var(--nb-color-bee-dark);
-    --color-accent-light: var(--nb-color-bee);
-    --color-accent-green: var(--nb-color-success);
-    --color-accent-yellow: var(--nb-color-bee);
-    --color-accent-blue: var(--nb-color-primary);
-    --color-accent-red: var(--nb-color-error);
-
-    --color-bg-light: var(--nb-color-bg);
-    --color-bg-lighter: var(--nb-color-surface);
-    --color-bg-hover: var(--nb-color-surface-2);
-    --color-text-dark: var(--nb-text-primary);
-    --color-text-light: var(--nb-text-secondary);
-    --color-border: var(--nb-color-border);
+    --color-bg-light: #0d1117;
+    --color-bg-lighter: #161b22;
+    --color-bg-hover: #1c2128;
+    --color-text-dark: #e6edf3;
+    --color-text-light: #8b949e;
+    --color-border: #30363d;
 
     /* Status Colors */
-    --color-success: var(--nb-color-success);
-    --color-warning: var(--nb-color-warning);
-    --color-error: var(--nb-color-error);
-    --color-info: var(--nb-color-info);
+    --color-success: #3fb950;
+    --color-warning: #FFD700;
+    --color-error: #f85149;
+    --color-info: #58a6ff;
 
     /* Spacing */
     --spacing-xs: 0.25rem;
@@ -68,9 +37,9 @@
     --spacing-xl: 2rem;
     --spacing-2xl: 3rem;
 
-    /* Typography — Roboto (Nudgebee) */
-    --font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    --font-family-display: 'Roboto', -apple-system, 'Segoe UI', sans-serif;
+    /* Typography */
+    --font-family: 'Barlow', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-family-display: 'Oswald', 'Barlow', sans-serif;
     --font-size-xs: 0.75rem;
     --font-size-sm: 0.875rem;
     --font-size-md: 1rem;
@@ -92,11 +61,11 @@
     --radius-xl: 20px;
     --radius-full: 9999px;
 
-    /* Shadow — soft, light-theme */
-    --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
-    --shadow-md: 0 2px 8px rgba(16, 24, 40, 0.08);
-    --shadow-lg: 0 8px 24px rgba(16, 24, 40, 0.10);
-    --shadow-xl: 0 16px 40px rgba(16, 24, 40, 0.12);
+    /* Shadow */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.3);
+    --shadow-xl: 0 20px 30px rgba(0, 0, 0, 0.35);
 
     /* Transitions */
     --transition-fast: 150ms ease-in-out;
@@ -104,13 +73,13 @@
     --transition-slow: 300ms ease-in-out;
 
     /* Chart/widget colors */
-    --color-surface: var(--nb-color-surface);
-    --color-card-bg: var(--nb-color-surface);
-    --color-chart-grid: rgba(17, 24, 39, 0.08);
-    --color-chart-text: var(--nb-text-primary);
-    --color-chart-text-light: var(--nb-text-secondary);
-    --color-ring-bg: var(--nb-color-border);
-    --color-heatmap-empty: var(--nb-color-surface-2);
+    --color-surface: #161b22;
+    --color-card-bg: #161b22;
+    --color-chart-grid: rgba(255, 255, 255, 0.08);
+    --color-chart-text: #e6edf3;
+    --color-chart-text-light: #8b949e;
+    --color-ring-bg: #30363d;
+    --color-heatmap-empty: #161b22;
 }
 
 /* ============================
@@ -158,8 +127,8 @@ body {
 
 /* Solid Dark Navigation */
 .glass-nav {
-    background: var(--nb-color-surface) !important;
-    border-bottom: 1px solid var(--nb-color-border);
+    background: #161b22 !important;
+    border-bottom: 1px solid #30363d;
 }
 
 .navbar {
@@ -216,13 +185,13 @@ body {
 }
 
 .nav-link:hover {
-    color: var(--nb-text-primary);
-    background-color: rgba(37, 99, 235, 0.06);
+    color: #e6edf3;
+    background-color: rgba(255, 255, 255, 0.06);
 }
 
 .nav-link.active {
-    color: var(--nb-color-primary);
-    background-color: var(--nb-color-primary-soft);
+    color: #FFD700;
+    background-color: rgba(255, 255, 255, 0.08);
 }
 
 /* Mobile Bottom Nav */
@@ -275,7 +244,7 @@ body {
 }
 
 .mobile-nav-link.active {
-    color: var(--nb-color-primary);
+    color: #FFD700;
 }
 
 .mobile-nav-link.active i {
@@ -429,8 +398,8 @@ a:hover {
 .form-group select:focus,
 .form-group textarea:focus {
     outline: none;
-    border-color: var(--nb-color-primary);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    border-color: #FFD700;
+    box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.15);
 }
 
 .form-input {
@@ -446,8 +415,8 @@ a:hover {
 
 .form-input:focus {
     outline: none;
-    border-color: var(--nb-color-primary);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    border-color: #FFD700;
+    box-shadow: 0 0 0 3px rgba(255, 215, 0, 0.15);
 }
 
 /* Stepper Input */
@@ -475,8 +444,8 @@ a:hover {
 }
 
 .stepper-btn:hover {
-    background: var(--nb-color-primary);
-    color: var(--nb-color-white);
+    background: #FFD700;
+    color: #0d1117;
 }
 
 .form-control input {
@@ -563,13 +532,13 @@ input[type="checkbox"] {
 }
 
 .btn-primary {
-    background: var(--nb-color-primary);
-    color: var(--nb-color-white);
+    background: #FFD700;
+    color: #0d1117;
     font-weight: var(--font-weight-bold);
 }
 
 .btn-primary:hover {
-    background: var(--nb-color-primary-hover);
+    background: #ffe566;
     box-shadow: var(--shadow-md);
 }
 
@@ -578,15 +547,15 @@ input[type="checkbox"] {
 }
 
 .btn-secondary {
-    background: var(--nb-color-surface);
-    color: var(--nb-text-primary);
-    border: 2px solid var(--nb-color-border);
+    background: #161b22;
+    color: #e6edf3;
+    border: 2px solid #30363d;
 }
 
 .btn-secondary:hover {
-    background: var(--nb-color-primary-soft);
-    border-color: var(--nb-color-primary);
-    color: var(--nb-color-primary);
+    background: #1c2128;
+    border-color: #FFD700;
+    color: #FFD700;
 }
 
 .btn-danger {
@@ -621,7 +590,7 @@ input[type="checkbox"] {
 
 .btn-large:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.25);
+    box-shadow: 0 6px 20px rgba(255, 215, 0, 0.25);
 }
 
 .btn-large:active {
@@ -894,19 +863,19 @@ input[type="checkbox"] {
 }
 
 ::-webkit-scrollbar-track {
-    background: var(--nb-color-bg);
+    background: #0d1117;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--nb-color-border);
+    background: #30363d;
     border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--nb-text-secondary);
+    background: #8b949e;
 }
 
 * {
     scrollbar-width: thin;
-    scrollbar-color: var(--nb-color-border) var(--nb-color-bg);
+    scrollbar-color: #30363d #0d1117;
 }

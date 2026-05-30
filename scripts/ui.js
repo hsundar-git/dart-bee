@@ -2857,7 +2857,7 @@ const UI = (() => {
             const statusColors = {
                 'registration': '#ff9800',
                 'in_progress': '#4caf50',
-                'completed': '#2563eb'
+                'completed': '#FFD700'
             };
             const statusLabels = {
                 'registration': 'Registration Open',
@@ -2912,7 +2912,7 @@ const UI = (() => {
             const statusColors = {
                 'registration': '#ff9800',
                 'in_progress': '#4caf50',
-                'completed': '#2563eb'
+                'completed': '#FFD700'
             };
             const statusLabels = {
                 'registration': 'Registration Open',
