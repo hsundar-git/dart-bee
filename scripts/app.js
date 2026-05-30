@@ -1783,18 +1783,20 @@ const App = (() => {
         const gameType = currentGame.game_type;
         const winCondition = currentGame.win_condition;
         const scoringMode = currentGame.scoring_mode;
+        const isPractice = currentGame.is_practice || false;
 
         // Hide completion modal
         const modal = document.getElementById('game-completion-modal');
         modal.classList.add('hidden');
 
-        // Create new game with same settings
+        // Create new game with same settings (preserve practice mode)
         const newGame = Game.createGame({
             playerCount: playerNames.length,
             playerNames: playerNames,
             gameType: gameType,
             winBelow: winCondition === 'below',
-            scoringMode: scoringMode
+            scoringMode: scoringMode,
+            is_practice: isPractice
         });
 
         // Save to database

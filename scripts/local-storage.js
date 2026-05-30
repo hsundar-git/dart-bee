@@ -42,7 +42,9 @@ const LocalStorageBackend = (() => {
 
     function getOrCreatePlayer(playerName) {
         const players = LocalDB.getTable('players');
-        let player = players.find(p => p.name === playerName);
+        // Case-insensitive match so "Hem" and "hem" resolve to one player
+        const target = String(playerName).toLowerCase();
+        let player = players.find(p => String(p.name).toLowerCase() === target);
         if (player) return player;
 
         player = {
@@ -506,7 +508,8 @@ const LocalStorageBackend = (() => {
 
     async function addPlayer(name) {
         const players = LocalDB.getTable('players');
-        if (players.find(p => p.name === name)) {
+        const target = String(name).toLowerCase();
+        if (players.find(p => String(p.name).toLowerCase() === target && !p.is_deleted)) {
             return { error: 'A player with this name already exists' };
         }
         const player = {
@@ -1130,7 +1133,8 @@ const LocalStorageBackend = (() => {
     }
 
     async function getPlayersByNames(names) {
-        return LocalDB.getTable('players').filter(p => names.includes(p.name) && !p.is_deleted);
+        const wanted = new Set((names || []).map(n => String(n).toLowerCase()));
+        return LocalDB.getTable('players').filter(p => wanted.has(String(p.name).toLowerCase()) && !p.is_deleted);
     }
 
     async function getPlayerLeaderboard(sortCol, limit) {

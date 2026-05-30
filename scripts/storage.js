@@ -746,6 +746,18 @@ const Storage = (() => {
     async function _addPlayer(name) {
         try {
             const sb = ensureInitialized();
+
+            // Case-insensitive duplicate check ("Hem" and "hem" are the same player)
+            const { data: existing } = await sb
+                .from('players')
+                .select('id')
+                .ilike('name', escapeLikePattern(name))
+                .or('is_deleted.is.null,is_deleted.eq.false')
+                .limit(1);
+            if (existing && existing.length > 0) {
+                return { error: 'A player with this name already exists' };
+            }
+
             const { data, error } = await sb
                 .from('players')
                 .insert([{ id: generateUUID(), name: name, created_at: new Date().toISOString() }])
@@ -831,19 +843,37 @@ const Storage = (() => {
     async function _getPlayers() {
         try {
             const sb = ensureInitialized();
-            const { data, error } = await sb
-                .from('player_stats')
+
+            // Fetch ALL non-deleted players from the base table so that newly
+            // added players (with no completed games yet) still show up. The
+            // player_stats view only includes players who have completed games,
+            // so it can't be the sole source for the player list.
+            const { data: allPlayers, error: playersError } = await sb
+                .from('players')
                 .select('*')
+                .or('is_deleted.is.null,is_deleted.eq.false')
                 .order('created_at', { ascending: false });
 
-            if (error) {
-                console.error('Error fetching players:', error);
-                throw error;
+            if (playersError) {
+                console.error('Error fetching players:', playersError);
+                throw playersError;
             }
 
+            // Fetch aggregate stats from the view and merge them in by id.
+            const { data: stats, error: statsError } = await sb
+                .from('player_stats')
+                .select('*');
+
+            if (statsError) {
+                console.error('Error fetching player stats:', statsError);
+            }
+
+            const statsById = {};
+            (stats || []).forEach(s => { statsById[s.id] = s; });
+
             const playersObj = {};
-            (data || []).forEach(player => {
-                playersObj[player.name] = player;
+            (allPlayers || []).forEach(player => {
+                playersObj[player.name] = { ...player, ...(statsById[player.id] || {}) };
             });
 
             return playersObj;
@@ -857,14 +887,15 @@ const Storage = (() => {
         try {
             const sb = ensureInitialized();
 
-            const { data: existing, error: fetchError } = await sb
+            // Case-insensitive match so "Hem" and "hem" resolve to one player
+            const { data: matches } = await sb
                 .from('players')
                 .select('*')
-                .eq('name', playerName)
-                .single();
+                .ilike('name', escapeLikePattern(playerName))
+                .limit(1);
 
-            if (!fetchError && existing) {
-                return existing;
+            if (matches && matches.length > 0) {
+                return matches[0];
             }
 
             const newPlayer = {
@@ -997,6 +1028,14 @@ const Storage = (() => {
             const v = c === 'x' ? r : (r & 0x3 | 0x8);
             return v.toString(16);
         });
+    }
+
+    /**
+     * Escape a literal string for use as an ILIKE pattern so it matches
+     * exactly (case-insensitively) without LIKE wildcards taking effect.
+     */
+    function escapeLikePattern(value) {
+        return String(value).replace(/[\\%_]/g, '\\$&');
     }
 
     // ============================================================================
@@ -1362,8 +1401,10 @@ const Storage = (() => {
         if (isLocal()) return LocalStorageBackend.getPlayersByNames(names);
         try {
             const sb = ensureInitialized();
-            const { data } = await sb.from('players').select('id, name').in('name', names);
-            return data || [];
+            // Case-insensitive matching: fetch all and filter by lowercased name set
+            const wanted = new Set((names || []).map(n => String(n).toLowerCase()));
+            const { data } = await sb.from('players').select('id, name');
+            return (data || []).filter(p => wanted.has(String(p.name).toLowerCase()));
         } catch (e) { return []; }
     }
 

@@ -1065,6 +1065,9 @@ const UI = (() => {
         const amateurBadge = game.win_condition === 'below'
             ? '<span class="amateur-mode-badge">Amateur Mode</span>'
             : '';
+        const practiceBadge = game.is_practice
+            ? '<span class="practice-badge">Practice</span>'
+            : '';
 
         // Handle completed games or invalid player index
         if (!player) {
@@ -1072,12 +1075,12 @@ const UI = (() => {
             document.getElementById('current-player-name').textContent = winner
                 ? `${winner.name} Wins!`
                 : 'Game Complete';
-            document.getElementById('game-title').innerHTML = `${game.game_type} - Finished ${amateurBadge}`;
+            document.getElementById('game-title').innerHTML = `${game.game_type} - Finished ${practiceBadge} ${amateurBadge}`;
             return;
         }
 
         document.getElementById('current-player-name').textContent = `${player.name}'s Turn`;
-        document.getElementById('game-title').innerHTML = `${game.game_type} - Turn ${game.current_turn + 1} ${amateurBadge}`;
+        document.getElementById('game-title').innerHTML = `${game.game_type} - Turn ${game.current_turn + 1} ${practiceBadge} ${amateurBadge}`;
     }
 
     /**

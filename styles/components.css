@@ -7677,6 +7677,7 @@
     text-transform: uppercase;
     letter-spacing: 1px;
     box-shadow: 0 2px 4px rgba(217, 119, 6, 0.3);
+    vertical-align: middle;
 }
 
 /* ============================
