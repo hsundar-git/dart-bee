@@ -8128,3 +8128,126 @@
     width: 100% !important;
     max-height: 200px;
 }
+
+/* ============================================================
+   UX MODERNIZATION
+   Skeleton loaders, empty states, segmented control,
+   scoring-pad touch targets, card micro-interactions
+   ============================================================ */
+
+/* --- Skeleton loaders --- */
+@keyframes nb-shimmer {
+    0% { background-position: -420px 0; }
+    100% { background-position: 420px 0; }
+}
+
+.skeleton-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+}
+
+.skeleton-card {
+    height: 88px;
+    border-radius: var(--radius-lg);
+    background: var(--color-bg-lighter);
+    border: 1px solid var(--color-border);
+    position: relative;
+    overflow: hidden;
+}
+
+.skeleton-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.06) 50%, transparent 100%);
+    background-size: 420px 100%;
+    animation: nb-shimmer 1.3s ease-in-out infinite;
+}
+
+.skeleton-line {
+    height: 12px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 25%, rgba(255, 255, 255, 0.10) 37%, rgba(255, 255, 255, 0.05) 63%);
+    background-size: 420px 100%;
+    animation: nb-shimmer 1.3s ease-in-out infinite;
+}
+
+/* --- Richer empty states --- */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 6px;
+    padding: var(--spacing-2xl) var(--spacing-lg);
+}
+
+.empty-state-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+    margin-bottom: var(--spacing-xs);
+    opacity: 0.9;
+}
+
+.empty-state-title {
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-dark);
+}
+
+.empty-state-text {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-light);
+    max-width: 340px;
+}
+
+.empty-state-cta {
+    margin-top: var(--spacing-md);
+}
+
+/* --- Segmented control: make the track read as a control --- */
+.leaderboard-tabs {
+    background: var(--color-bg-lighter);
+    border: 1px solid var(--color-border);
+}
+
+/* --- Scoring pad: larger touch targets + tactile feedback --- */
+.dart-quick-btn {
+    width: 48px;
+    height: 48px;
+}
+
+.dart-quick-btn:active {
+    transform: scale(0.92);
+}
+
+.dart-input-group input {
+    min-height: 52px;
+}
+
+/* --- Card micro-interactions --- */
+.home-card {
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.home-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.game-card {
+    transition: transform 0.15s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.game-card:hover {
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-md);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skeleton-card::after,
+    .skeleton-line { animation: none; }
+    .home-card:hover,
+    .game-card:hover { transform: none; }
+}

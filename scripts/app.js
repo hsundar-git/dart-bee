@@ -742,7 +742,8 @@ const App = (() => {
      * Load home page
      */
     async function loadHome() {
-        UI.showLoader('Loading dashboard...');
+        // No blocking overlay — each region shows its own skeleton and fills
+        // in independently, so the dashboard feels responsive instead of frozen.
         try {
             UI.showPage('home-page');
             await UI.renderRecentGames();
@@ -752,8 +753,6 @@ const App = (() => {
         } catch (error) {
             console.error('Error loading home:', error);
             UI.showToast('Failed to load dashboard', 'error');
-        } finally {
-            UI.hideLoader();
         }
     }
 

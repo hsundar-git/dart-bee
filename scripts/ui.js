@@ -143,6 +143,31 @@ const UI = (() => {
     }
 
     /**
+     * Build a skeleton placeholder list (shimmer cards) shown while data loads.
+     */
+    function skeletonCards(count = 3) {
+        const cards = Array.from({ length: count }, () => '<div class="skeleton-card"></div>').join('');
+        return `<div class="skeleton-list">${cards}</div>`;
+    }
+
+    /**
+     * Build a rich empty-state block with an optional call-to-action.
+     * cta = { label, page } navigates via the data-page router on click.
+     */
+    function emptyState({ icon = '🎯', title = '', text = '', cta = null } = {}) {
+        const ctaHtml = cta
+            ? `<button class="btn btn-primary btn-small empty-state-cta" onclick="Router.navigate('${cta.page}')">${cta.label}</button>`
+            : '';
+        return `
+            <div class="empty-state">
+                <div class="empty-state-icon">${icon}</div>
+                ${title ? `<div class="empty-state-title">${title}</div>` : ''}
+                ${text ? `<div class="empty-state-text">${text}</div>` : ''}
+                ${ctaHtml}
+            </div>`;
+    }
+
+    /**
      * Show modal dialog
      */
     function showModal(content, title = '') {
@@ -306,6 +331,9 @@ const UI = (() => {
                 return;
             }
 
+            // Show shimmer skeletons immediately while data loads
+            container.innerHTML = skeletonCards(3);
+
             // Also render stats widget
             await renderStatsWidget();
 
@@ -363,7 +391,12 @@ const UI = (() => {
             }
 
             if (interruptedGames.length === 0 && completedGames.length === 0 && !activeCompetition) {
-                container.innerHTML = '<p class="placeholder">No games yet. Start your first game!</p>';
+                container.innerHTML = emptyState({
+                    icon: '🎯',
+                    title: 'No games yet',
+                    text: 'Start your first game to see it here and begin tracking your stats.',
+                    cta: { label: 'Start a game', page: 'new-game' }
+                });
                 return;
             }
 
@@ -1216,8 +1249,8 @@ const UI = (() => {
         if (pagination.total === 0) {
             const hasFilter = filter && filter.trim().length > 0;
             container.innerHTML = hasFilter
-                ? `<p class="placeholder">No games found for "${filter}". Try a different name or clear the filter.</p>`
-                : '<p class="placeholder">No games yet. Start your first game to see it here!</p>';
+                ? emptyState({ icon: '🔍', title: 'No matches', text: `No games found for "${filter}". Try a different name or clear the filter.` })
+                : emptyState({ icon: '📜', title: 'No game history', text: 'Completed games will appear here once you start playing.', cta: { label: 'Start a game', page: 'new-game' } });
             if (paginationControls) paginationControls.style.display = 'none';
             document.getElementById('history-games-count').textContent = 'Total: 0 games';
             return;
@@ -1626,7 +1659,9 @@ const UI = (() => {
 
         if (rankings.length === 0) {
             if (podiumContainer) podiumContainer.innerHTML = '';
-            container.innerHTML = `<p class="placeholder">${searchQuery ? 'No players found matching "' + searchQuery + '"' : 'No games yet'}</p>`;
+            container.innerHTML = searchQuery
+                ? emptyState({ icon: '🔍', title: 'No players found', text: `Nothing matches "${searchQuery}". Try a different name.` })
+                : emptyState({ icon: '🏆', title: 'No rankings yet', text: 'Play a few games and the leaderboard will fill up here.', cta: { label: 'Start a game', page: 'new-game' } });
             return;
         }
 
@@ -2655,7 +2690,12 @@ const UI = (() => {
             const deletedPlayers = await Storage.getDeletedPlayers();
 
             if (players.length === 0 && deletedPlayers.length === 0) {
-                container.innerHTML = '<p class="placeholder">No players yet. Add a player or start a game!</p>';
+                container.innerHTML = emptyState({
+                    icon: '👥',
+                    title: 'No players yet',
+                    text: 'Add players to track their games, stats, and head-to-head records.',
+                    cta: { label: 'Start a game', page: 'new-game' }
+                });
                 return;
             }
 
