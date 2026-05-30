@@ -195,7 +195,7 @@ const StatsWidgets = (() => {
     /**
      * Render a progress ring SVG
      */
-    function renderProgressRing(value, max, label, color = '#FFD700', size = 100) {
+    function renderProgressRing(value, max, label, color = '#2563eb', size = 100) {
         const percentage = Math.min((value / max) * 100, 100);
         const radius = (size - 10) / 2;
         const circumference = 2 * Math.PI * radius;
@@ -244,25 +244,25 @@ const StatsWidgets = (() => {
                 label: 'Win Rate Goal',
                 value: parseFloat(stats.winRate) || 0,
                 max: goals.targetWinRate,
-                color: '#3fb950'
+                color: '#16a34a'
             },
             {
                 label: '100s Goal',
                 value: stats.total100s || 0,
                 max: goals.target100s,
-                color: '#FFD700'
+                color: '#f59e0b'
             },
             {
                 label: 'Games Goal',
                 value: stats.gamesPlayed || 0,
                 max: goals.targetGames,
-                color: '#58a6ff'
+                color: '#2563eb'
             },
             {
                 label: 'Avg/Turn Goal',
                 value: parseFloat(stats.avgPerTurn || stats.avgPerDart) || 0,
                 max: goals.targetAvgPerDart,
-                color: '#FFD700'
+                color: '#f59e0b'
             }
         ];
 
@@ -819,9 +819,9 @@ const StatsWidgets = (() => {
         ];
 
         const gridColor = 'rgba(255, 255, 255, 0.12)';
-        const textColor = '#e6edf3';
-        const purple = '#FFD700';
-        const green = '#3fb950';
+        const textColor = '#374151';
+        const purple = '#2563eb';
+        const green = '#16a34a';
 
         const chart = new Chart(ctx, {
             type: 'radar',
